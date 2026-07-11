@@ -1,0 +1,24 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# Allow .env access denial
+<Files "\.env">
+    Require all denied
+</Files>
+
+# Protect logs directory
+RewriteRule ^logs/ - [F,L]
+
+# Protect app directory internals
+RewriteRule ^app/ - [F,L]
+
+# Protect database directory
+RewriteRule ^database/ - [F,L]
+
+# Front controller — all requests go to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+# Default charset
+AddDefaultCharset UTF-8

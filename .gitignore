@@ -1,0 +1,32 @@
+# Database
+database/*.sqlite
+database/*.sqlite-journal
+database/*.sqlite-wal
+database/*.sqlite-shm
+
+# Logs
+logs/*.log
+
+# Environment (keep template, ignore actual)
+# .env  # We'll keep .env in repo for demo, but you should remove credentials for production
+
+# Build artifacts
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# PHP
+vendor/
+composer.lock
+
+# OS
+.DS_Store
+__MACOSX/
+.env
