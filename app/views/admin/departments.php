@@ -1,4 +1,4 @@
-<?php /** Admin: Departments */ ?>
+<?php /** Admin: Departments — card view + AG Grid table */ ?>
 <div class="page-header">
     <div>
         <h2 class="page-title"><i class="bi bi-diagram-3-fill"></i> <?= e($title) ?></h2>
@@ -9,6 +9,18 @@
     </button>
 </div>
 
+<!-- AG Grid view for sorting/filtering -->
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-table text-purple"></i> جدول الأقسام (<?= count($depts) ?>)</span>
+        <small class="text-muted">جدول تفاعلي — بحث + ترتيب + تصفية</small>
+    </div>
+    <div class="card-body p-2">
+        <div id="deptsGrid" style="width:100%; height: 360px;"></div>
+    </div>
+</div>
+
+<h6 class="text-muted mb-3"><i class="bi bi-grid-3x3-gap"></i> عرض بطاقات:</h6>
 <div class="row g-3">
     <?php foreach ($depts as $d): ?>
         <div class="col-md-6 col-lg-4">
@@ -82,6 +94,73 @@
 </div>
 
 <script>
+// AG Grid for departments
+(function() {
+    const deptsData = <?= json_encode($depts, JSON_UNESCAPED_UNICODE) ?>;
+    const columns = [
+        {
+            headerName: '#',
+            valueGetter: params => params.node.rowIndex + 1,
+            width: 60, maxWidth: 80,
+            sortable: false, filter: false,
+            pinned: 'right',
+            cellClass: 'text-center text-muted',
+        },
+        {
+            headerName: 'الاسم (عربي)',
+            field: 'name_ar',
+            minWidth: 180,
+            cellClass: 'fw-bold',
+        },
+        {
+            headerName: 'الاسم (إنجليزي)',
+            field: 'name_en',
+            minWidth: 150,
+            cellRenderer: params => `<span dir="ltr">${params.value || ''}</span>`,
+        },
+        {
+            headerName: 'الوصف',
+            field: 'description',
+            minWidth: 220,
+            cellClass: 'small',
+        },
+        {
+            headerName: 'عدد الأطباء',
+            field: 'doctors_count',
+            width: 120,
+            cellRenderer: params => `<span class="badge bg-primary">${params.value || 0} طبيب</span>`,
+        },
+        {
+            headerName: 'إجراءات',
+            width: 140,
+            sortable: false,
+            filter: false,
+            pinned: 'left',
+            cellRenderer: function(params) {
+                const d = params.data;
+                const csrf = getCsrfToken();
+                const editBtn = `<button class="btn btn-sm btn-outline-primary me-1" onclick='editDept(${JSON.stringify(d)})' title="تعديل"><i class="bi bi-pencil"></i></button>`;
+                const deleteForm = `<form method="post" action="<?= url('/admin/departments') ?>/${d.id}/delete" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">` +
+                    `<input type="hidden" name="csrf_token" value="${csrf}">` +
+                    `<button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>` +
+                    `</form>`;
+                return `<div class="text-nowrap">${editBtn}${deleteForm}</div>`;
+            },
+        },
+    ];
+
+    function tryInit() {
+        if (typeof agGrid === 'undefined' || typeof initAgGrid !== 'function') {
+            setTimeout(tryInit, 100);
+            return;
+        }
+        initAgGrid('#deptsGrid', columns, deptsData, {
+            pagination: false,
+        });
+    }
+    tryInit();
+})();
+
 function resetDeptForm() {
     document.getElementById('deptForm').action = '<?= url("/admin/departments/store") ?>';
     document.getElementById('dept_id').value = '';
@@ -91,7 +170,6 @@ function resetDeptForm() {
     document.getElementById('deptModalTitle').textContent = 'إضافة قسم';
 }
 function editDept(d) {
-    // Re-route form to update endpoint
     document.getElementById('deptForm').action = '<?= url("/admin/departments") ?>/' + d.id + '/update';
     document.getElementById('dept_id').value = d.id;
     document.getElementById('dept_name_ar').value = d.name_ar;

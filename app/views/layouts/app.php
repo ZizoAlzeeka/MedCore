@@ -12,6 +12,9 @@ if ($role === 'doctor') {
 $notifCount = Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
 $recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
 
+// Determine if AJAX request
+$isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+
 // Sidebar menu per role
 $menu = [];
 switch ($role) {
@@ -83,13 +86,15 @@ $basePath = parse_url(Env::get('APP_URL', ''), PHP_URL_PATH) ?: '';
 if ($basePath && strpos($currentUrl, $basePath) === 0) {
     $currentUrl = substr($currentUrl, strlen($basePath));
 }
-
-// Determine if AJAX request
-$isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
 ?>
 <?php if ($isAjax): ?>
-    <!-- AJAX: only render main content -->
-    <?= $view ?>
+<!-- AJAX: only render main content + metadata header for SPA nav -->
+<script data-ajax-meta type="application/json"><?= json_encode([
+    'title' => $title ?? 'لوحة التحكم',
+    'subtitle' => $subtitle ?? '',
+    'currentUrl' => $currentUrl,
+], JSON_UNESCAPED_UNICODE) ?></script>
+<?= $view ?>
 <?php else: ?>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -102,6 +107,8 @@ $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <link href="<?= asset('css/style.css') ?>" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.min.css" rel="stylesheet">
 </head>
 <body>
 <div class="app-wrapper">
@@ -124,7 +131,7 @@ $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
                 <?php if (isset($item['section'])): ?>
                     <div class="nav-section"><?= e($item['section']) ?></div>
                 <?php else: ?>
-                    <a href="<?= url($item['url']) ?>" class="<?= $currentUrl === $item['url'] ? 'active' : '' ?>">
+                    <a href="<?= url($item['url']) ?>" class="spa-link <?= $currentUrl === $item['url'] ? 'active' : '' ?>" data-spa="1" data-url="<?= url($item['url']) ?>">
                         <i class="bi <?= e($item['icon']) ?>"></i>
                         <span><?= e($item['label']) ?></span>
                     </a>
@@ -181,10 +188,31 @@ $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
                         </div>
                     </div>
                 </div>
-                <!-- Profile -->
-                <a href="<?= url('/profile') ?>" class="topbar-icon-btn" title="الملف الشخصي">
-                    <i class="bi bi-person-circle"></i>
-                </a>
+                <!-- Profile dropdown -->
+                <div class="dropdown topbar-profile-dropdown">
+                    <button class="topbar-icon-btn topbar-profile-trigger" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false" title="حسابي">
+                        <i class="bi bi-person-circle"></i>
+                        <i class="bi bi-chevron-down topbar-profile-caret"></i>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end topbar-profile-menu">
+                        <div class="topbar-profile-header">
+                            <div class="avatar-circle"><?= mb_substr(Auth::name(), 0, 1) ?></div>
+                            <div class="info">
+                                <div class="name"><?= e(Auth::name()) ?></div>
+                                <div class="role"><?= roleLabel($role) ?><?= !empty($doctor['dept_name']) ? ' — ' . e($doctor['dept_name']) : '' ?></div>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="<?= url('/profile') ?>" class="dropdown-item spa-link" data-spa="1">
+                            <i class="bi bi-person-badge"></i>
+                            <span>الملف الشخصي</span>
+                        </a>
+                        <a href="<?= url('/logout') ?>" class="dropdown-item text-danger">
+                            <i class="bi bi-box-arrow-right"></i>
+                            <span>تسجيل الخروج</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -215,6 +243,7 @@ $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
 <?php if (isset($extraScripts)) echo $extraScripts; ?>
 

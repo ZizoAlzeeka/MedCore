@@ -154,6 +154,90 @@ $router->add('POST', '/profile', 'ProfileController@update');
 
 // ===== AJAX endpoints =====
 $router->ajax('GET',  '/ajax/tests/search', 'TestOrderController@ajaxSearchTests');
+
+// ===== Public AJAX: LOINC search via NLM API (admin/tests modal) =====
+$router->ajax('GET', '/ajax/loinc/search', function () {
+    $q = trim($_GET['q'] ?? '');
+    if (mb_strlen($q) < 2) {
+        return ['success' => true, 'results' => []];
+    }
+
+    // Try NLM LOINC search API: https://loinc.regenstrief.org/searchapi/
+    // Endpoint: https://loinc.regenstrief.org/searchapi/loincs/?query=...
+    // Fallback: search our own DB if NLM is unreachable
+    $results = [];
+    $upstreamHit = false;
+
+    // NLM endpoint
+    $url = 'https://loinc.regenstrief.org/searchapi/loincs/?query=' . urlencode($q) . '&count=15&offset=0';
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        CURLOPT_USERAGENT => 'MedCore/1.0 (admin tests catalog)',
+    ]);
+    $raw = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($raw && $httpCode === 200) {
+        $data = json_decode($raw, true);
+        if (isset($data['results']) && is_array($data['results'])) {
+            $upstreamHit = true;
+            foreach ($data['results'] as $row) {
+                $results[] = [
+                    'loinc_code'   => $row['loincNumber'] ?? ($row['code'] ?? ''),
+                    'name_en'      => $row['longName'] ?? ($row['display'] ?? ''),
+                    'name_ar'      => '', // NLM doesn't provide Arabic — admin can fill
+                    'short_name'   => $row['shortName'] ?? '',
+                    'category'     => $row['class'] ?? ($row['classType'] ?? ''),
+                    'sample_type'  => $row['system'] ?? '',
+                    'source'       => 'NLM',
+                ];
+            }
+        }
+    }
+
+    // If NLM failed or returned no results, fallback to our local DB
+    if (empty($results)) {
+        try {
+            $qq = "%$q%";
+            $rows = Database::fetchAll(
+                "SELECT loinc_code, name_ar, name_en, category, sample_type
+                 FROM tests_catalog
+                 WHERE loinc_code LIKE ? OR name_en LIKE ? OR name_ar LIKE ? OR category LIKE ?
+                 ORDER BY name_ar LIMIT 20",
+                [$qq, $qq, $qq, $qq]
+            );
+            foreach ($rows as $row) {
+                $results[] = [
+                    'loinc_code'   => $row['loinc_code'],
+                    'name_en'      => $row['name_en'] ?? '',
+                    'name_ar'      => $row['name_ar'] ?? '',
+                    'short_name'   => '',
+                    'category'     => $row['category'] ?? '',
+                    'sample_type'  => $row['sample_type'] ?? '',
+                    'source'       => 'LOCAL',
+                ];
+            }
+        } catch (Throwable $e) {
+            Logger::warning('LOINC search local fallback failed: ' . $e->getMessage());
+        }
+    }
+
+    Logger::info('LOINC search', [
+        'query' => $q,
+        'upstream_hit' => $upstreamHit,
+        'results_count' => count($results),
+        'curl_err' => $err ?: null,
+    ]);
+
+    return ['success' => true, 'results' => $results, 'source' => $upstreamHit ? 'NLM' : 'LOCAL'];
+});
 $router->ajax('GET',  '/ajax/check-duplicate', 'TestOrderController@ajaxCheckDuplicate');
 $router->ajax('GET',  '/ajax/doctors/by-department', 'ReceptionController@ajaxDoctorsByDept');
 $router->ajax('GET',  '/ajax/doctor/{id}/slots', 'ReceptionController@ajaxDoctorSlots');
