@@ -16,6 +16,9 @@ RUN sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/Allo
 RUN echo "ServerTokens Prod\nServerSignature Off\nTraceEnable Off" > /etc/apache2/conf-available/security-hardening.conf && \
     a2enconf security-hardening
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 WORKDIR /var/www/html
 
 COPY . /var/www/html/
@@ -24,9 +27,6 @@ RUN mkdir -p /var/www/html/logs && \
     chown -R www-data:www-data /var/www/html && \
     chmod -R 0775 /var/www/html/logs && \
     chmod -R 0775 /var/www/html/database
-
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENV PORT=10000
 

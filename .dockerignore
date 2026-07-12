@@ -1,10 +1,7 @@
 .git
 .gitignore
 .gitattributes
-docker-entrypoint.sh
-Dockerfile
 .dockerignore
-render.yaml
 README.md
 INSTALL.md
 TESTING.md
