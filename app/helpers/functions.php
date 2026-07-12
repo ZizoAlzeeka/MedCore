@@ -20,8 +20,14 @@ function url($path = '')
 {
     $base = rtrim(Env::get('APP_URL', ''), '/');
     if ($base === '' || $base === 'auto') {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-            ? 'https' : (($_SERVER['REQUEST_SCHEME'] ?? 'http'));
+        $scheme = 'http';
+        if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+            $scheme = 'https';
+        } elseif (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') {
+            $scheme = 'https';
+        } elseif (($_SERVER['REQUEST_SCHEME'] ?? 'http') === 'https') {
+            $scheme = 'https';
+        }
         $host = $_SERVER['HTTP_HOST'] ?? '';
         if ($host !== '') {
             $base = $scheme . '://' . $host;

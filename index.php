@@ -42,6 +42,20 @@ Logger::info("Request: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_
     'user_id' => Auth::id(),
 ]);
 
+// ===== Auto-migration: ensure DB tables + seed exist on every cold start =====
+// Safe to call on every request — short-circuits if DB is already populated.
+// This handles fresh deploys (Render, Docker) where install.php hasn't been run.
+try {
+    $migrationMessages = AutoMigrator::runIfNeeded();
+    if (!empty($migrationMessages)) {
+        foreach ($migrationMessages as $m) {
+            Logger::info('[migration] ' . $m);
+        }
+    }
+} catch (Throwable $e) {
+    Logger::error('AutoMigrator threw: ' . $e->getMessage());
+}
+
 // Load routes and dispatch
 $router = require __DIR__ . '/app/routes/web.php';
 $uri = $_SERVER['REQUEST_URI'] ?? '/';

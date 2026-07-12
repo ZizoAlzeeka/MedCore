@@ -3,6 +3,22 @@
  * Main configuration loader
  */
 
+// Detect HTTPS behind Render's reverse proxy / load balancer.
+// Render terminates TLS at the edge and forwards to Apache over HTTP,
+// passing the original protocol in X-Forwarded-Proto. We must set
+// $_SERVER['HTTPS'] = 'on' so PHP, $_SERVER['REQUEST_SCHEME'], and
+// any code checking HTTPS all see the correct protocol.
+if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
+    $xfp = strtolower(trim($_SERVER['HTTP_X_FORWARDED_PROTO']));
+    if ($xfp === 'https' || strpos($xfp, 'https') !== false) {
+        $_SERVER['HTTPS'] = 'on';
+        $_SERVER['REQUEST_SCHEME'] = 'https';
+    } elseif ($xfp === 'http') {
+        $_SERVER['HTTPS'] = 'off';
+        $_SERVER['REQUEST_SCHEME'] = 'http';
+    }
+}
+
 // Error reporting
 if (Env::get('APP_DEBUG', 'false') === 'true') {
     error_reporting(E_ALL);
