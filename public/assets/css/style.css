@@ -622,19 +622,21 @@ body {
 }
 
 /* ========================================
-   SPA Skeleton Loader (shown while fetching new page)
+   SPA Skeleton Loader (rendered INSIDE #main-content)
    ======================================== */
-.spa-skeleton-loader {
-    position: absolute;
-    top: var(--topbar-height);
-    right: 0;
-    left: var(--sidebar-width);
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(2px);
-    z-index: 998;
-    padding: 24px;
-    display: none;
+#main-content.spa-loading {
+    /* No opacity fade — old content is fully replaced by skeleton */
+    background: transparent;
+    position: relative;
+}
+.spa-skeleton-inside {
+    padding: 4px 0;
+    width: 100%;
+    animation: spa-fade-in 0.15s ease-out;
+}
+@keyframes spa-fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
 .spa-skel-line {
     height: 14px;
@@ -655,6 +657,15 @@ body {
 @keyframes spa-skel-shimmer {
     0%   { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+}
+
+/* Animate content in when new page arrives */
+#main-content:not(.spa-loading) > * {
+    animation: spa-content-in 0.18s ease-out;
+}
+@keyframes spa-content-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
 /* ========================================

@@ -64,31 +64,24 @@ function isSpaLink(el) {
 function showMainLoader() {
     const main = document.getElementById('main-content');
     if (!main) return;
-    // Fade-out current content
-    main.style.opacity = '0.55';
-    // Inject skeleton overlay
-    let skel = document.getElementById('spa-skeleton');
-    if (!skel) {
-        skel = document.createElement('div');
-        skel.id = 'spa-skeleton';
-        skel.className = 'spa-skeleton-loader';
-        skel.innerHTML = `
+    // IMMEDIATELY replace main-content with skeleton (no fade, no ghosting)
+    main.classList.add('spa-loading');
+    main.innerHTML = `
+        <div class="spa-skeleton-inside">
             <div class="spa-skel-line" style="width:40%"></div>
             <div class="spa-skel-line" style="width:75%"></div>
             <div class="spa-skel-line" style="width:60%"></div>
-            <div class="spa-skel-block"></div>
-            <div class="spa-skel-block"></div>
-        `;
-        main.parentElement.insertBefore(skel, main);
-    }
-    skel.style.display = 'block';
+            <div class="spa-skel-block" style="height:60px"></div>
+            <div class="spa-skel-block" style="height:380px"></div>
+        </div>
+    `;
+    // Scroll main to top while loading
+    main.scrollTop = 0;
 }
 
 function hideMainLoader() {
-    const skel = document.getElementById('spa-skeleton');
-    if (skel) skel.style.display = 'none';
     const main = document.getElementById('main-content');
-    if (main) main.style.opacity = '1';
+    if (main) main.classList.remove('spa-loading');
 }
 
 function updatePageMeta(meta) {

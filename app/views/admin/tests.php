@@ -195,35 +195,48 @@ function editTest(t) {
 }
 
 // ============================================================
-// LOINC NLM API search
+// LOINC NLM API search — LIVE as user types (250ms debounce)
 // ============================================================
 let loincSearchTimer = null;
+let loincSearchReqId = 0; // race-condition guard: only render latest response
+
 function performLoincSearch() {
-    const q = document.getElementById('loincSearchInput').value.trim();
+    const input = document.getElementById('loincSearchInput');
     const resultsEl = document.getElementById('loincResults');
+    if (!input || !resultsEl) return;
+
+    const q = input.value.trim();
     if (q.length < 2) {
-        resultsEl.innerHTML = '<small class="text-muted">اكتب حرفين على الأقل للبحث...</small>';
+        resultsEl.innerHTML = '<small class="text-muted">✍️ اكتب حرفين على الأقل للبحث اللحظي في قاعدة LOINC العالمية...</small>';
         return;
     }
-    resultsEl.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div> جاري البحث في قاعدة LOINC...</div>';
+
+    // Show inline spinner immediately (don't clear previous results entirely —
+    // keep them visible while new ones load, just show spinner on top)
+    resultsEl.innerHTML = '<div class="text-center py-2 text-primary"><div class="spinner-border spinner-border-sm"></div> <small>جاري البحث في قاعدة LOINC عن "' + q.replace(/[<>]/g, '') + '"...</small></div>';
+
+    const reqId = ++loincSearchReqId;
     searchLoincApi(q, function(results) {
+        // Only render if this is still the latest request
+        if (reqId !== loincSearchReqId) return;
+
         if (!results || results.length === 0) {
-            resultsEl.innerHTML = '<small class="text-muted">لا توجد نتائج. أدخل البيانات يدوياً بالأسفل.</small>';
+            resultsEl.innerHTML = '<small class="text-muted">❌ لا توجد نتائج. أدخل البيانات يدوياً بالأسفل.</small>';
             return;
         }
-        let html = '<div class="list-group" style="font-size: 12px;">';
-        results.forEach(r => {
+        let html = '<div class="list-group loinc-results-list" style="font-size: 12px;">';
+        results.forEach((r, idx) => {
             const sourceBadge = r.source === 'NLM'
                 ? '<span class="badge bg-success ms-1">NLM</span>'
                 : '<span class="badge bg-secondary ms-1">محلي</span>';
-            html += `<a href="javascript:void(0)" class="list-group-item list-group-item-action" onclick='pickLoincResult(${JSON.stringify(r)})'>` +
-                `<div class="d-flex justify-content-between">` +
+            const safeJson = JSON.stringify(r).replace(/'/g, "\\'");
+            html += `<a href="javascript:void(0)" class="list-group-item list-group-item-action" onclick='pickLoincResult(${safeJson})'>` +
+                `<div class="d-flex justify-content-between align-items-center">` +
                 `<span class="fw-bold"><span class="loinc-code">${r.loinc_code || ''}</span> ${sourceBadge}</span>` +
                 `<small class="text-muted">${r.category || ''}</small>` +
                 `</div>` +
-                `<div dir="ltr" class="small">${r.name_en || r.name_ar || ''}</div>` +
-                (r.short_name ? `<small class="text-muted">short: ${r.short_name}</small>` : '') +
-                (r.sample_type ? `<small class="text-muted ms-2">• sample: ${r.sample_type}</small>` : '') +
+                `<div dir="ltr" class="small text-truncate" style="max-width:100%">${r.name_en || r.name_ar || ''}</div>` +
+                (r.sample_type ? `<small class="text-muted">sample: ${r.sample_type}</small>` : '') +
                 `</a>`;
         });
         html += '</div>';
@@ -237,28 +250,54 @@ function pickLoincResult(r) {
     if (r.name_ar) document.getElementById('test_name_ar').value = r.name_ar;
     if (r.category) document.getElementById('test_cat').value = r.category;
     if (r.sample_type) document.getElementById('test_sample').value = r.sample_type;
-    // Hide results
     document.getElementById('loincResults').innerHTML =
         '<div class="alert alert-success mb-0 py-2"><i class="bi bi-check-circle"></i> تم تعبئة الحقول من قاعدة LOINC. راجع الاسم العربي وأكمله إذا لزم.</div>';
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+// Wire up input listeners — works on both initial load AND after SPA navigation.
+// We re-attach on every page navigation because the input element is recreated.
+function initLoincSearchInput() {
     const input = document.getElementById('loincSearchInput');
     const btn = document.getElementById('loincSearchBtn');
-    if (input) {
-        input.addEventListener('input', function() {
+    if (!input) return;
+    // Avoid double-binding: mark the input
+    if (input.dataset.loincBound === '1') return;
+    input.dataset.loincBound = '1';
+
+    // Live search as user types (250ms debounce for snappy UX)
+    input.addEventListener('input', function() {
+        clearTimeout(loincSearchTimer);
+        loincSearchTimer = setTimeout(performLoincSearch, 250);
+    });
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
             clearTimeout(loincSearchTimer);
-            loincSearchTimer = setTimeout(performLoincSearch, 400);
-        });
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                performLoincSearch();
-            }
+            performLoincSearch();
+        }
+    });
+    // Trigger initial search when modal opens with focus
+    input.addEventListener('focus', function() {
+        if (input.value.trim().length >= 2 && !document.getElementById('loincResults').innerHTML.trim()) {
+            performLoincSearch();
+        }
+    });
+    if (btn && !btn.dataset.loincBound) {
+        btn.dataset.loincBound = '1';
+        btn.addEventListener('click', function() {
+            clearTimeout(loincSearchTimer);
+            performLoincSearch();
         });
     }
-    if (btn) {
-        btn.addEventListener('click', performLoincSearch);
-    }
-});
+}
+
+// Initial page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLoincSearchInput);
+} else {
+    // We're already loaded (e.g. SPA navigation just swapped content)
+    initLoincSearchInput();
+}
+// SPA navigation: re-bind when new content arrives
+document.addEventListener('spa:navigated', initLoincSearchInput);
 </script>
