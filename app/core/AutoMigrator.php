@@ -53,7 +53,10 @@ class AutoMigrator
             }
 
             if (!$needsMigration && !$needsSeed) {
-                return [];
+                // Even if no migration/seed is needed, still sync the tests catalog
+                // so newly-added tests in code are auto-inserted on every deployment.
+                $catalogMsgs = self::syncTestsCatalog($pdo);
+                return $catalogMsgs;
             }
 
             Logger::info('AutoMigrator: starting (needsMigration=' . ($needsMigration ? '1' : '0') . ', needsSeed=' . ($needsSeed ? '1' : '0') . ')');
