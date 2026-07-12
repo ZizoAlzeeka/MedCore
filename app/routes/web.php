@@ -155,21 +155,20 @@ $router->add('POST', '/profile', 'ProfileController@update');
 // ===== AJAX endpoints =====
 $router->ajax('GET',  '/ajax/tests/search', 'TestOrderController@ajaxSearchTests');
 
-// ===== Public AJAX: LOINC search via NLM API (admin/tests modal) =====
+// ===== Public AJAX: LOINC search via NLM Clinical Tables API (admin/tests modal) =====
 $router->ajax('GET', '/ajax/loinc/search', function () {
     $q = trim($_GET['q'] ?? '');
     if (mb_strlen($q) < 2) {
         return ['success' => true, 'results' => []];
     }
 
-    // Try NLM LOINC search API: https://loinc.regenstrief.org/searchapi/
-    // Endpoint: https://loinc.regenstrief.org/searchapi/loincs/?query=...
-    // Fallback: search our own DB if NLM is unreachable
+    // Primary source: NLM Clinical Tables (free, no API key required)
+    // Endpoint: https://clinicaltables.nlm.nih.gov/api/loinc_items/v3/search
+    // Response format: [totalCount, [loincNumbers...], null, [[names...]]]
     $results = [];
     $upstreamHit = false;
 
-    // NLM endpoint
-    $url = 'https://loinc.regenstrief.org/searchapi/loincs/?query=' . urlencode($q) . '&count=15&offset=0';
+    $url = 'https://clinicaltables.nlm.nih.gov/api/loinc_items/v3/search?terms=' . urlencode($q) . '&max=20&df=text,LOINC_NUM';
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $url,
@@ -186,17 +185,22 @@ $router->ajax('GET', '/ajax/loinc/search', function () {
 
     if ($raw && $httpCode === 200) {
         $data = json_decode($raw, true);
-        if (isset($data['results']) && is_array($data['results'])) {
+        // Format: [count, [codes], null, [[name], [name], ...]]
+        if (is_array($data) && count($data) >= 4 && is_array($data[1]) && is_array($data[3])) {
             $upstreamHit = true;
-            foreach ($data['results'] as $row) {
+            $codes = $data[1];
+            $names = $data[3];
+            $count = min(count($codes), count($names));
+            for ($i = 0; $i < $count; $i++) {
+                $nameStr = is_array($names[$i]) ? implode(' - ', array_filter($names[$i])) : (string)$names[$i];
                 $results[] = [
-                    'loinc_code'   => $row['loincNumber'] ?? ($row['code'] ?? ''),
-                    'name_en'      => $row['longName'] ?? ($row['display'] ?? ''),
-                    'name_ar'      => '', // NLM doesn't provide Arabic — admin can fill
-                    'short_name'   => $row['shortName'] ?? '',
-                    'category'     => $row['class'] ?? ($row['classType'] ?? ''),
-                    'sample_type'  => $row['system'] ?? '',
-                    'source'       => 'NLM',
+                    'loinc_code'  => $codes[$i],
+                    'name_en'     => $nameStr,
+                    'name_ar'     => '', // NLM doesn't provide Arabic — admin fills
+                    'short_name'  => '',
+                    'category'    => '',
+                    'sample_type' => '',
+                    'source'      => 'NLM',
                 ];
             }
         }
@@ -234,6 +238,7 @@ $router->ajax('GET', '/ajax/loinc/search', function () {
         'upstream_hit' => $upstreamHit,
         'results_count' => count($results),
         'curl_err' => $err ?: null,
+        'http_code' => $httpCode,
     ]);
 
     return ['success' => true, 'results' => $results, 'source' => $upstreamHit ? 'NLM' : 'LOCAL'];
