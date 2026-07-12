@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: medcore
+    runtime: docker
+    plan: free
+    region: oman
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /login
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "true"
+      - key: APP_TIMEZONE
+        value: Asia/Riyadh
+      - key: DB_DRIVER
+        value: mysql
+      - key: DB_HOST
+        value: 193.203.184.246
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_NAME
+        value: u864760987_platformdb
+      - key: DB_USER
+        value: u864760987_platformdb
+      - key: DB_PASS
+        value: Ksa26platformdb
+      - key: DB_CHARSET
+        value: utf8mb4

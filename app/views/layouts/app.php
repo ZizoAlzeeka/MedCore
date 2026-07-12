@@ -217,6 +217,11 @@ $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
 <?php if (isset($extraScripts)) echo $extraScripts; ?>
+
+<a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
+    <i class="bi bi-download"></i>
+    <span>تحميل السجلات</span>
+</a>
 </body>
 </html>
 <?php endif; ?>

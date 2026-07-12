@@ -44,5 +44,10 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
+
+<a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
+    <i class="bi bi-download"></i>
+    <span>تحميل السجلات</span>
+</a>
 </body>
 </html>

@@ -4,11 +4,8 @@ database/*.sqlite-journal
 database/*.sqlite-wal
 database/*.sqlite-shm
 
-# Logs
+# Logs (runtime only — directory kept, contents ignored)
 logs/*.log
-
-# Environment (keep template, ignore actual)
-# .env  # We'll keep .env in repo for demo, but you should remove credentials for production
 
 # Build artifacts
 *.bak
@@ -28,5 +25,4 @@ composer.lock
 
 # OS
 .DS_Store
-__MACOSX/
-.env
+__MACOSX__

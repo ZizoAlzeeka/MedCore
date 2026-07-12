@@ -555,3 +555,68 @@ body {
 .cursor-pointer { cursor: pointer; }
 .uid-code { font-family: 'Courier New', monospace; background: rgba(108,99,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 11.5px; font-weight: 700; color: var(--primary-purple); }
 .loinc-code { font-family: monospace; background: rgba(108,99,255,0.1); color: var(--primary-purple); padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+
+/* ========================================
+   Floating Logs Download Button
+   Shows on every page (RTL: bottom-left
+   to avoid overlapping right-side sidebar)
+   ======================================== */
+.floating-logs-btn {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #6C63FF 0%, #9D4EDD 100%);
+    color: #fff;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 20px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.45);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: transform .25s ease, box-shadow .25s ease, opacity .25s ease;
+    line-height: 1;
+    user-select: none;
+}
+.floating-logs-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 28px rgba(108, 99, 255, 0.6);
+    color: #fff;
+    text-decoration: none;
+}
+.floating-logs-btn:active { transform: translateY(0) scale(0.98); }
+.floating-logs-btn i { font-size: 16px; line-height: 1; }
+.floating-logs-btn span { white-space: nowrap; }
+
+.floating-logs-btn.pulse::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50px;
+    background: rgba(108, 99, 255, 0.35);
+    z-index: -1;
+    animation: flb-pulse 2.4s ease-out infinite;
+}
+@keyframes flb-pulse {
+    0%   { transform: scale(1);   opacity: .8; }
+    70%  { transform: scale(1.25); opacity: 0; }
+    100% { transform: scale(1.25); opacity: 0; }
+}
+
+@media (max-width: 575.98px) {
+    .floating-logs-btn {
+        bottom: 14px;
+        left: 14px;
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+    .floating-logs-btn span { display: none; }
+    .floating-logs-btn i { font-size: 18px; }
+    .floating-logs-btn::after { content: 'السجلات'; font-size: 11px; }
+}

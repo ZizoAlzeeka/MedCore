@@ -19,6 +19,14 @@ if (!function_exists('mb_strlen')) {
 function url($path = '')
 {
     $base = rtrim(Env::get('APP_URL', ''), '/');
+    if ($base === '' || $base === 'auto') {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            ? 'https' : (($_SERVER['REQUEST_SCHEME'] ?? 'http'));
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+        if ($host !== '') {
+            $base = $scheme . '://' . $host;
+        }
+    }
     if ($path && $path[0] !== '/') $path = '/' . $path;
     return $base . $path;
 }
