@@ -277,6 +277,8 @@ body {
     margin-right: var(--sidebar-width);
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
+    min-width: 0; /* prevent flex overflow */
 }
 
 /* Topbar */
@@ -333,7 +335,10 @@ body {
 .main-content {
     flex: 1;
     padding: 20px;
-    overflow-y: auto;
+    /* No overflow-y here — let the whole page scroll naturally with body.
+       This avoids the awkward nested scrollbar inside the main-content area
+       when content is taller than viewport. */
+    min-width: 0;
 }
 
 /* Page header */
