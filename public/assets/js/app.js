@@ -328,10 +328,13 @@ window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
     }
 
     // Default options — RTL friendly + Arabic UI strings
+    // NOTE: AG Grid Community edition does NOT support:
+    //   - 'direction' property (use CSS dir="rtl" on container instead)
+    //   - 'menuTabs' in columnDef (requires ag-grid-enterprise)
+    //   - 'theme' in gridOptions (use CSS class on container instead)
     const defaults = {
         columnDefs: columnDefs,
         rowData: rowData || [],
-        direction: 'rtl',
         animateRows: true,
         defaultColDef: {
             flex: 1,
@@ -340,7 +343,6 @@ window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
             sortable: true,
             filter: true,
             floatingFilter: true,
-            menuTabs: ['filterMenuTab', 'generalMenuTab'],
         },
         pagination: true,
         paginationPageSize: 25,
@@ -349,12 +351,12 @@ window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
         ensureDomOrder: true,
         suppressCellFocus: true,
         localeText: window.AG_GRID_AR_LOCALE || {},
-        theme: 'ag-theme-quartz',
     };
 
     const gridOptions = Object.assign({}, defaults, opts);
-    // Ensure class is on the element
+    // Ensure CSS classes are on the element (theme + RTL + custom)
     target.className = (target.className || '') + ' ag-theme-quartz medcore-ag-grid';
+    target.setAttribute('dir', 'rtl');
 
     return agGrid.createGrid(target, gridOptions);
 };
