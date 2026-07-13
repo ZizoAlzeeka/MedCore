@@ -31,6 +31,9 @@ class Database
     private static $instance = null;
     private $pdo;
     private $driver; // 'mysql' or 'sqlite'
+    private static $queryCache = []; // ⚡ in-process query cache (small reads only)
+    private static $queryCacheHits = 0;
+    private static $queryCacheMisses = 0;
 
     private function __construct()
     {
@@ -58,13 +61,44 @@ class Database
         $pass = Env::get('DB_PASS');
         $charset = Env::get('DB_CHARSET', 'utf8mb4');
 
+        // ⚡ Performance: short connect timeout (3s) + short command timeout (5s)
+        // prevents the entire app from stalling when the remote MySQL is slow/unreachable
+        // (was the #1 cause of the 30–60s page-load times on Coolify).
+        // Connection pooling via persistent connections avoids re-handshaking TLS/auth
+        // on every request.
         $dsn = "mysql:host={$host};port={$port};dbname={$name};charset={$charset}";
         $options = [
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset} COLLATE utf8mb4_unicode_ci",
+            PDO::ATTR_TIMEOUT                  => 3,   // connect timeout (seconds)
+            PDO::ATTR_PERSISTENT               => true, // reuse connection across requests
+            PDO::ATTR_ERRMODE                  => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE       => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES         => false,
         ];
+
+        // MySQL-specific timeouts (only available for mysql driver — guard for safety)
+        if (defined('PDO::MYSQL_ATTR_CONNECT_TIMEOUT')) {
+            $options[PDO::MYSQL_ATTR_CONNECT_TIMEOUT] = 3;
+        }
+        if (defined('PDO::MYSQL_ATTR_READ_TIMEOUT')) {
+            $options[PDO::MYSQL_ATTR_READ_TIMEOUT] = 10;
+        }
+        if (defined('PDO::MYSQL_ATTR_WRITE_TIMEOUT')) {
+            $options[PDO::MYSQL_ATTR_WRITE_TIMEOUT] = 10;
+        }
 
         try {
             $this->pdo = new PDO($dsn, $user, $pass, $options);
+            // Set session-level timeouts as a belt-and-suspenders measure
+            // (also works on PDO builds that ignore the connect attributes above).
+            try {
+                $this->pdo->exec("SET SESSION wait_timeout=20");
+                $this->pdo->exec("SET SESSION interactive_timeout=20");
+                $this->pdo->exec("SET SESSION net_read_timeout=10");
+                $this->pdo->exec("SET SESSION net_write_timeout=10");
+            } catch (Throwable $ignored) {
+                // Some MySQL forks don't support all of these; ignore.
+            }
         } catch (PDOException $e) {
             Logger::error("MySQL connection failed: " . $e->getMessage());
             throw new Exception("فشل الاتصال بقاعدة البيانات MySQL: " . $e->getMessage());
@@ -248,7 +282,19 @@ class Database
 
     public static function fetch($sql, $params = [])
     {
-        return self::query($sql, $params)->fetch();
+        // ⚡ Cache small lookup reads for the duration of one request
+        $key = self::cacheKey($sql, $params);
+        if (isset(self::$queryCache[$key])) {
+            self::$queryCacheHits++;
+            return self::$queryCache[$key];
+        }
+        self::$queryCacheMisses++;
+        $row = self::query($sql, $params)->fetch();
+        // Only cache when $row is false (not found) or a small row
+        if ($row === false || (is_array($row) && count($row) <= 20)) {
+            self::$queryCache[$key] = $row;
+        }
+        return $row;
     }
 
     public static function fetchAll($sql, $params = [])
@@ -258,7 +304,38 @@ class Database
 
     public static function fetchColumn($sql, $params = [])
     {
-        return self::query($sql, $params)->fetchColumn();
+        // ⚡ Cache COUNT(*) style scalar lookups (very common, rarely change)
+        $key = 'col::' . self::cacheKey($sql, $params);
+        if (isset(self::$queryCache[$key])) {
+            self::$queryCacheHits++;
+            return self::$queryCache[$key];
+        }
+        self::$queryCacheMisses++;
+        $val = self::query($sql, $params)->fetchColumn();
+        self::$queryCache[$key] = $val;
+        return $val;
+    }
+
+    private static function cacheKey($sql, $params)
+    {
+        return md5($sql . '|' . json_encode($params, JSON_UNESCAPED_UNICODE));
+    }
+
+    /**
+     * Invalidate the in-process query cache (call after writes)
+     */
+    public static function invalidateCache()
+    {
+        self::$queryCache = [];
+    }
+
+    public static function cacheStats()
+    {
+        return [
+            'hits' => self::$queryCacheHits,
+            'misses' => self::$queryCacheMisses,
+            'entries' => count(self::$queryCache),
+        ];
     }
 
     public static function insert($table, $data)
@@ -267,6 +344,7 @@ class Database
         $placeholders = array_fill(0, count($cols), '?');
         $sql = "INSERT INTO `$table` (`" . implode('`,`', $cols) . "`) VALUES (" . implode(',', $placeholders) . ")";
         self::query($sql, array_values($data));
+        self::invalidateCache(); // ⚡ writes invalidate the read cache
         return self::getInstance()->pdo->lastInsertId();
     }
 
@@ -282,13 +360,16 @@ class Database
         }
         $sql = "UPDATE `$table` SET " . implode(', ', $set) . " WHERE $where";
         $stmt = self::query($sql, array_merge($setParams, array_values($whereParams)));
+        self::invalidateCache(); // ⚡ writes invalidate the read cache
         return $stmt->rowCount();
     }
 
     public static function delete($table, $where, $params = [])
     {
         $sql = "DELETE FROM `$table` WHERE $where";
-        return self::query($sql, $params)->rowCount();
+        $rowCount = self::query($sql, $params)->rowCount();
+        self::invalidateCache(); // ⚡ writes invalidate the read cache
+        return $rowCount;
     }
 
     /**

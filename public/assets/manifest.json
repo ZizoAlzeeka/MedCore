@@ -1,0 +1,29 @@
+{
+  "name": "منصة كشف التحاليل المكررة - MedCore",
+  "short_name": "MedCore",
+  "description": "منصة طبية متكاملة لربط أقسام المستشفى ومنع تكرار التحاليل المخبرية",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F0F4F8",
+  "theme_color": "#6C63FF",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/public/assets/img/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["medical", "health", "productivity"],
+  "shortcuts": [
+    {
+      "name": "تسجيل الدخول",
+      "url": "/login",
+      "icons": [{ "src": "/public/assets/img/logo.png", "sizes": "96x96" }]
+    }
+  ]
+}

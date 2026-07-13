@@ -7,6 +7,11 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($appName) ?> — <?= e($title ?? 'تسجيل') ?></title>
+<meta name="theme-color" content="#6C63FF">
+<!-- ⚡ Performance: preconnect to CDNs -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
@@ -41,9 +46,10 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="<?= asset('js/app.js') ?>"></script>
+<!-- ⚡ Defer JS to avoid blocking first paint -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+<script src="<?= asset('js/app.js') ?>" defer></script>
 
 <a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
     <i class="bi bi-download"></i>

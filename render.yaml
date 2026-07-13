@@ -6,15 +6,19 @@ services:
     region: oman
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /login
+    # ⚡ Health check on /health — lightweight endpoint that doesn't touch DB.
+    # Avoids the slow redirects/DB queries on / or /login that were causing
+    # false health-check failures on Coolify.
+    healthCheckPath: /health
+    healthCheckGracePeriodSeconds: 60
     autoDeploy: true
     envVars:
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
-        value: "true"
+        value: "false"
       - key: APP_TIMEZONE
         value: Asia/Riyadh
       - key: DB_DRIVER
@@ -31,3 +35,5 @@ services:
         value: Ksa26platformdb
       - key: DB_CHARSET
         value: utf8mb4
+      - key: PHP_OPCACHE_ENABLE
+        value: "1"

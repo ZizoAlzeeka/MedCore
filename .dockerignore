@@ -11,7 +11,9 @@ database/*.sqlite
 database/*.sqlite-journal
 database/*.sqlite-wal
 database/*.sqlite-shm
+database/.migrated
 logs/*.log
+logs/*.txt
 vendor/
 node_modules/
 .vscode/
@@ -22,3 +24,6 @@ __MACOSX/
 *.tmp
 *.swp
 *.swo
+test-db.php
+install.php
+router.php

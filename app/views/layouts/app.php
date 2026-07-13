@@ -8,8 +8,23 @@ if ($role === 'doctor') {
     $doctor = Database::fetch("SELECT d.*, dep.name_ar AS dept_name FROM doctors d LEFT JOIN departments dep ON d.department_id = dep.id WHERE d.user_id = ?", [Auth::id()]);
 }
 
-// Notification count
-$notifCount = Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
+// ⚡ Performance: cache notification count in APCu for 15 seconds per user
+// to avoid hitting the DB on every page load. The dropdown still fetches
+// the actual list, but the badge count is cached.
+$notifCount = 0;
+$notifCacheKey = 'notif_count_' . Auth::id();
+if (function_exists('apcu_fetch') && apcu_exists($notifCacheKey)) {
+    $notifCount = (int) apcu_fetch($notifCacheKey);
+} else {
+    try {
+        $notifCount = (int) Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
+        if (function_exists('apcu_store')) {
+            apcu_store($notifCacheKey, $notifCount, 15);
+        }
+    } catch (Throwable $e) {
+        $notifCount = 0;
+    }
+}
 $recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
 
 // Determine if AJAX request
@@ -103,14 +118,34 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($appName) ?> — <?= e($title ?? 'لوحة التحكم') ?></title>
 <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
+<meta name="theme-color" content="#6C63FF">
+
+<!-- ⚡ PWA: manifest for installable app -->
+<link rel="manifest" href="<?= asset('manifest.json') ?>">
+
+<!-- ⚡ Performance: preconnect to CDNs to warm up DNS/TLS -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<!-- ⚡ Bootstrap RTL (load stylesheet non-blocking) -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+<!-- ⚡ Cairo font with display=swap to avoid blocking text render -->
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+<!-- Local app styles -->
 <link href="<?= asset('css/style.css') ?>" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.min.css" rel="stylesheet">
+
+<!-- ⚡ AG Grid styles — loaded only when needed (deferred via JS below if not present) -->
+<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-grid.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/styles/ag-theme-quartz.min.css" rel="stylesheet" media="print" onload="this.media='all'">
 </head>
 <body>
+<!-- ⚡ Top loading progress bar -->
+<div id="page-loader-bar"></div>
+
 <div class="app-wrapper">
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -241,16 +276,24 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js"></script>
-<script src="<?= asset('js/app.js') ?>"></script>
+<!-- ⚡ Defer all JS to avoid blocking first paint -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@32.3.3/dist/ag-grid-community.min.js" defer></script>
+<script src="<?= asset('js/app.js') ?>" defer></script>
 <?php if (isset($extraScripts)) echo $extraScripts; ?>
 
 <a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
     <i class="bi bi-download"></i>
     <span>تحميل السجلات</span>
 </a>
+
+<!-- ⚡ Connection status indicator -->
+<div class="conn-status" id="conn-status">
+    <span class="dot"></span>
+    <span class="text">متصل</span>
+</div>
+
 </body>
 </html>
 <?php endif; ?>

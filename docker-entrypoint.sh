@@ -18,13 +18,19 @@ if grep -q ":80" "$APACHE_SITE_FILE"; then
     sed -i "s/:80/:${PORT}/g" "$APACHE_SITE_FILE"
 fi
 
-mkdir -p /var/www/html/logs
-chown -R www-data:www-data /var/www/html/logs
-chmod -R 0775 /var/www/html/logs
+mkdir -p /var/www/html/logs /var/www/html/database
+chown -R www-data:www-data /var/www/html/logs /var/www/html/database
+chmod -R 0775 /var/www/html/logs /var/www/html/database
 
 if [ -f /var/www/html/.env ]; then
     chmod 0644 /var/www/html/.env
 fi
+
+# ⚡ Performance: clear OPcache after deploy so the new code is recompiled.
+# The opcache.revalidate_freq=60 in our config means cached PHP files can
+# stay stale for up to 60s after deploy — calling opcache_reset() at container
+# start guarantees fresh code is loaded.
+php -r 'if (function_exists("opcache_reset")) opcache_reset();' 2>/dev/null || true
 
 echo ">>> Starting Apache ($@) on port ${PORT}"
 exec "$@"

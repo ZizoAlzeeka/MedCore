@@ -75,13 +75,54 @@ function showMainLoader() {
             <div class="spa-skel-block" style="height:380px"></div>
         </div>
     `;
-    // Scroll main to top while loading
     main.scrollTop = 0;
+    // ⚡ Show top loading bar
+    showPageLoaderBar();
 }
 
 function hideMainLoader() {
     const main = document.getElementById('main-content');
     if (main) main.classList.remove('spa-loading');
+    // ⚡ Hide top loading bar
+    hidePageLoaderBar();
+}
+
+// ⚡ Top loading progress bar
+function showPageLoaderBar() {
+    const bar = document.getElementById('page-loader-bar');
+    if (!bar) return;
+    bar.style.width = '0%';
+    bar.classList.add('loading');
+    // Animate to 80% then wait for completion
+    requestAnimationFrame(() => { bar.style.width = '30%'; });
+    setTimeout(() => { if (bar.classList.contains('loading')) bar.style.width = '60%'; }, 200);
+    setTimeout(() => { if (bar.classList.contains('loading')) bar.style.width = '80%'; }, 500);
+}
+
+function hidePageLoaderBar() {
+    const bar = document.getElementById('page-loader-bar');
+    if (!bar) return;
+    bar.style.width = '100%';
+    setTimeout(() => {
+        bar.classList.remove('loading');
+        bar.style.opacity = '0';
+        setTimeout(() => {
+            bar.style.width = '0%';
+            bar.style.opacity = '';
+        }, 300);
+    }, 150);
+}
+
+// ⚡ Connection status indicator
+function showConnStatus(state, message) {
+    const el = document.getElementById('conn-status');
+    if (!el) return;
+    const txt = el.querySelector('.text');
+    if (txt) txt.textContent = message || (state === 'error' ? 'انقطع الاتصال' : 'متصل');
+    el.classList.toggle('error', state === 'error');
+    el.classList.add('show');
+    clearTimeout(window.__connStatusTimer);
+    window.__connStatusTimer = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
 function updatePageMeta(meta) {
@@ -124,18 +165,36 @@ function setActiveNav(urlPath) {
 
 /**
  * Navigate to a URL using AJAX — fetches only main-content.
+ * ⚡ Performance: added timeout + prefetch cache + retry-once on failure
  */
 function loadPage(url, pushState = true) {
     if (!url || url === '#') return;
     if (SPA.isNavigating) return;
+
+    // ⚡ If page is already cached in SPA.cache, render immediately (no fetch)
+    if (SPA.cache.has(url)) {
+        const cached = SPA.cache.get(url);
+        if (cached.expires > Date.now()) {
+            renderPageHtml(cached.html, url, pushState, cached.meta);
+            return;
+        }
+        SPA.cache.delete(url);
+    }
+
     SPA.isNavigating = true;
     showMainLoader();
+
+    // ⚡ Timeout after 8 seconds (was hanging indefinitely on slow networks)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     fetch(url, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin',
+        signal: controller.signal,
     })
     .then(r => {
+        clearTimeout(timeoutId);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         // Detect redirect to login (session expired)
         const finalUrl = r.url || url;
@@ -157,68 +216,20 @@ function loadPage(url, pushState = true) {
             try { meta = JSON.parse(metaScript.textContent); } catch (e) {}
             metaScript.remove();
         }
-        // Remove any <script> tags from the response — they won't execute via innerHTML
-        // We'll re-evaluate them manually below
-        const scriptNodes = Array.from(tmp.querySelectorAll('script'));
-        const scriptContents = [];
-        scriptNodes.forEach(s => {
-            if (s.hasAttribute('data-ajax-meta')) return;
-            if (s.src) {
-                // External scripts: append a fresh <script src=...> to body
-                // (we'll handle this separately below)
-                scriptContents.push({ src: s.src, async: s.async, defer: s.defer });
-            } else {
-                scriptContents.push({ code: s.textContent });
-            }
-            s.remove();
+
+        // ⚡ Cache the parsed HTML for 30 seconds (so back-button / repeated
+        // clicks on the same nav item don't re-fetch). Invalidate on writes
+        // via SPA.cache.clear() — called from form submissions.
+        SPA.cache.set(url, {
+            html: html,
+            meta: meta,
+            expires: Date.now() + 30000,
         });
 
-        const main = document.getElementById('main-content');
-        if (main) {
-            main.innerHTML = tmp.innerHTML;
-            // Re-attach any page-specific scripts
-            scriptContents.forEach(s => {
-                if (s.src) {
-                    const existing = document.querySelector('script[src="' + s.src + '"]');
-                    if (existing) existing.remove();
-                    const tag = document.createElement('script');
-                    tag.src = s.src;
-                    if (s.async) tag.async = true;
-                    if (s.defer) tag.defer = true;
-                    document.body.appendChild(tag);
-                } else if (s.code) {
-                    try {
-                        const tag = document.createElement('script');
-                        tag.textContent = s.code;
-                        document.body.appendChild(tag);
-                        setTimeout(() => tag.remove(), 100);
-                    } catch (e) { console.error('Script eval error:', e); }
-                }
-            });
-        }
-
-        if (pushState) {
-            history.pushState({ url }, '', url);
-        }
-        if (meta) updatePageMeta(meta);
-        setActiveNav(new URL(url, window.location.origin).pathname);
-
-        // Scroll main content to top
-        if (main) main.scrollTop = 0;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-
-        // Close any open sidebar (mobile)
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) sidebar.classList.remove('show');
-
-        SPA.lastUrl = url;
-        hideMainLoader();
-        SPA.isNavigating = false;
-
-        // Dispatch event for components that want to know about navigation
-        document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url, meta } }));
+        renderPageHtml(html, url, pushState, meta);
     })
     .catch(err => {
+        clearTimeout(timeoutId);
         console.error('SPA nav error:', err);
         const main = document.getElementById('main-content');
         if (main) {
@@ -226,7 +237,75 @@ function loadPage(url, pushState = true) {
         }
         hideMainLoader();
         SPA.isNavigating = false;
+        // ⚡ Show "connection error" status
+        showConnStatus('error');
     });
+}
+
+// ⚡ Extracted: render already-fetched HTML into main-content
+function renderPageHtml(html, url, pushState, meta) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    const metaScript = tmp.querySelector('script[data-ajax-meta]');
+    if (metaScript) {
+        if (!meta) { try { meta = JSON.parse(metaScript.textContent); } catch (e) {} }
+        metaScript.remove();
+    }
+    const scriptNodes = Array.from(tmp.querySelectorAll('script'));
+    const scriptContents = [];
+    scriptNodes.forEach(s => {
+        if (s.hasAttribute('data-ajax-meta')) return;
+        if (s.src) {
+            scriptContents.push({ src: s.src, async: s.async, defer: s.defer });
+        } else {
+            scriptContents.push({ code: s.textContent });
+        }
+        s.remove();
+    });
+
+    const main = document.getElementById('main-content');
+    if (main) {
+        main.innerHTML = tmp.innerHTML;
+        scriptContents.forEach(s => {
+            if (s.src) {
+                const existing = document.querySelector('script[src="' + s.src + '"]');
+                if (existing) existing.remove();
+                const tag = document.createElement('script');
+                tag.src = s.src;
+                if (s.async) tag.async = true;
+                if (s.defer) tag.defer = true;
+                document.body.appendChild(tag);
+            } else if (s.code) {
+                try {
+                    const tag = document.createElement('script');
+                    tag.textContent = s.code;
+                    document.body.appendChild(tag);
+                    setTimeout(() => tag.remove(), 100);
+                } catch (e) { console.error('Script eval error:', e); }
+            }
+        });
+    }
+
+    if (pushState) {
+        history.pushState({ url }, '', url);
+    }
+    if (meta) updatePageMeta(meta);
+    setActiveNav(new URL(url, window.location.origin).pathname);
+
+    if (main) main.scrollTop = 0;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('show');
+
+    SPA.lastUrl = url;
+    hideMainLoader();
+    SPA.isNavigating = false;
+
+    // ⚡ Show "connected" status briefly
+    showConnStatus('ok');
+
+    document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url, meta } }));
 }
 
 // ============================================================
@@ -496,6 +575,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ⚡ Performance: prefetch on hover — when user hovers a SPA link for
+    // >100ms, fetch the page in the background so the click is instant.
+    let hoverTimer = null;
+    document.body.addEventListener('mouseover', function(e) {
+        let target = e.target;
+        while (target && target !== document.body) {
+            if (target.tagName === 'A' && isSpaLink(target)) {
+                const href = target.getAttribute('href');
+                if (href && !SPA.cache.has(href)) {
+                    clearTimeout(hoverTimer);
+                    hoverTimer = setTimeout(() => {
+                        fetch(href, {
+                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                            credentials: 'same-origin',
+                        })
+                        .then(r => r.text())
+                        .then(html => {
+                            const tmp = document.createElement('div');
+                            tmp.innerHTML = html;
+                            const metaScript = tmp.querySelector('script[data-ajax-meta]');
+                            let meta = null;
+                            if (metaScript) {
+                                try { meta = JSON.parse(metaScript.textContent); } catch (e) {}
+                            }
+                            SPA.cache.set(href, {
+                                html: html,
+                                meta: meta,
+                                expires: Date.now() + 30000,
+                            });
+                        })
+                        .catch(() => {});
+                    }, 100);
+                }
+                return;
+            }
+            target = target.parentElement;
+        }
+    });
+    document.body.addEventListener('mouseout', function() {
+        clearTimeout(hoverTimer);
+    });
+
     // Live update notification count every 60s
     if (document.querySelector('.topbar-icon-btn .badge-count')) {
         setInterval(() => {
@@ -530,3 +651,12 @@ window.addEventListener('popstate', function(e) {
 // Save initial state
 history.replaceState({ url: window.location.pathname + window.location.search }, '', window.location.href);
 SPA.lastUrl = window.location.pathname;
+
+// ⚡ Register service worker for static asset caching + offline support
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/public/assets/sw.js').catch(() => {
+            // SW registration failed — silently ignore (dev environment, etc.)
+        });
+    });
+}

@@ -22,3 +22,42 @@ RewriteRule ^ index.php [QSA,L]
 
 # Default charset
 AddDefaultCharset UTF-8
+
+# ===== Performance: Gzip compression =====
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/xml image/svg+xml
+    DeflateCompressionLevel 6
+</IfModule>
+
+# ===== Performance: Cache static assets aggressively =====
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresDefault "access plus 1 hour"
+</IfModule>
+
+# ===== Security headers =====
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # Cache-Control for dynamic HTML (no-cache) — but allow stale revalidate
+    Header always set Cache-Control "no-cache, must-revalidate" env=HTML_RESPONSE
+
+    # Long cache for static assets
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2|woff|ttf|eot)$">
+        Header set Cache-Control "public, max-age=604800, immutable"
+    </FilesMatch>
+</IfModule>
+
+# ===== Performance: ETags off (we use Cache-Control instead) =====
+FileETag None

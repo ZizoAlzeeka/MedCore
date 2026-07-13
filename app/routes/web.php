@@ -6,6 +6,56 @@
 $router = new Router();
 
 // ===== Public: download full logs / server diagnostics as txt =====
+// ===== Health check endpoint (used by Coolify/Render) — lightweight, NO DB =====
+// Returns 200 + JSON {ok:true} immediately. Avoids triggering DB connection
+// (which can be slow on cold starts) for health check pings.
+$router->add('GET', '/health', function () {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    echo json_encode([
+        'ok' => true,
+        'status' => 'healthy',
+        'ts' => date('c'),
+        'php' => PHP_VERSION,
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
+// ===== Performance metrics endpoint (admin-only, lightweight) =====
+// Shows OPcache stats, APCu stats, DB cache hits, etc. Useful for debugging
+// slow page loads.
+$router->add('GET', '/perf', function () {
+    // Require admin (session-only check, no DB)
+    if (!Auth::check() || Auth::role() !== 'admin') {
+        http_response_code(403);
+        echo 'Admin only';
+        exit;
+    }
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+
+    $stats = [
+        'ts' => date('c'),
+        'php' => PHP_VERSION,
+        'opcache' => function_exists('opcache_get_status') ? opcache_get_status(false) : null,
+        'apcu' => function_exists('apcu_cache_info') ? apcu_cache_info(true) : null,
+        'db_cache' => class_exists('Database') ? Database::cacheStats() : null,
+        'memory' => [
+            'usage_mb' => round(memory_get_usage(true) / 1024 / 1024, 2),
+            'peak_mb' => round(memory_get_peak_usage(true) / 1024 / 1024, 2),
+            'limit' => ini_get('memory_limit'),
+        ],
+        'request' => [
+            'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+            'uri' => $_SERVER['REQUEST_URI'] ?? '',
+            'time' => $_SERVER['REQUEST_TIME'] ?? time(),
+        ],
+    ];
+    echo json_encode($stats, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
+// ===== Public: download full logs / server diagnostics as txt =====
 $router->add('GET', '/download-logs', function () {
     $sections = [];
 
@@ -248,6 +298,9 @@ $router->ajax('GET',  '/ajax/doctors/by-department', 'ReceptionController@ajaxDo
 $router->ajax('GET',  '/ajax/doctor/{id}/slots', 'ReceptionController@ajaxDoctorSlots');
 
 // ===== Home =====
+// ⚡ Performance: minimal redirect — no DB queries on the root URL.
+// Auth::check() only reads the session (no DB); role() reads from session too.
+// This keeps / health checks fast.
 $router->add('GET', '/', function() {
     if (Auth::check()) {
         $home = [
