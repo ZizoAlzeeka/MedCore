@@ -18,6 +18,11 @@
                     <input type="text" name="duplicate_window_days" class="form-control" inputmode="numeric" pattern="[0-9]*" oninput="forceEnglishDigits(this)" value="<?= e($all['duplicate_window_days'] ?? '30') ?>" required>
                     <div class="form-text">إذا طُلب نفس التحليل (نفس كود LOINC) لنفس المريض خلال هذه المدة، يظهر تنبيه للطبيب.</div>
                 </div>
+                <div class="col-md-6">
+                    <label class="form-label">متوسط تكلفة التحليل (ر.س)</label>
+                    <input type="text" name="avg_test_cost" class="form-control" inputmode="numeric" pattern="[0-9]*" oninput="forceEnglishDigits(this)" value="<?= e($all['avg_test_cost'] ?? '150') ?>" required>
+                    <div class="form-text">يُستخدم لحساب التوفير المالي التقديري في صفحة التقارير.</div>
+                </div>
             </div>
             <div class="mt-4">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> حفظ الإعدادات</button>

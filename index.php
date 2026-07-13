@@ -92,12 +92,20 @@ if (!file_exists($migrationFlagFile)) {
                 Logger::info('[migration] ' . $m);
             }
         }
+        // ⚡ Run incremental SQL migrations (add columns, indexes, etc.)
+        $appliedMigrations = MigrationRunner::run();
+        if (!empty($appliedMigrations)) {
+            foreach ($appliedMigrations as $m) {
+                Logger::info('[migration-runner] applied: ' . $m);
+            }
+        }
         // Write the flag file (with a timestamp + commit hash for debugging)
         @file_put_contents($migrationFlagFile, json_encode([
             'migrated_at' => date('Y-m-d H:i:s'),
             'php_version' => PHP_VERSION,
             'host' => Env::get('DB_HOST', 'sqlite'),
             'db' => Env::get('DB_NAME', 'platform.sqlite'),
+            'migrations_applied' => $appliedMigrations,
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     } catch (Throwable $e) {
         Logger::error('AutoMigrator threw: ' . $e->getMessage());

@@ -278,8 +278,49 @@ class AdminController extends Controller
              JOIN users u ON d.user_id = u.id
              GROUP BY d.id ORDER BY orders_count DESC LIMIT 5"
         );
+
+        // ⚡ NEW: Financial savings estimate
+        // Each prevented duplicate saves an estimated average test cost (configurable in settings).
+        // Default: 150 SAR per prevented test.
+        $setting = new Setting();
+        $avgTestCost = (float) ($setting->get('avg_test_cost') ?: 150);
+        $preventedCount = $dupStats['prevented'];
+        $estimatedSavings = $preventedCount * $avgTestCost;
+
+        // Tests by category
+        $testsByCategory = Database::fetchAll(
+            "SELECT category, COUNT(*) AS cnt
+             FROM tests_catalog
+             WHERE category IS NOT NULL AND category != ''
+             GROUP BY category
+             ORDER BY cnt DESC LIMIT 10"
+        );
+
+        // Orders by department (which department orders most tests)
+        $ordersByDept = Database::fetchAll(
+            "SELECT dep.name_ar, COUNT(o.id) AS orders_count
+             FROM test_orders o
+             JOIN doctors d ON o.doctor_id = d.id
+             JOIN departments dep ON d.department_id = dep.id
+             GROUP BY dep.id
+             ORDER BY orders_count DESC LIMIT 6"
+        );
+
+        // Recent activity timeline (last 30 days)
+        $recentActivity = Database::fetchAll(
+            "SELECT DATE(ordered_at) AS day, COUNT(*) AS cnt
+             FROM test_orders
+             WHERE ordered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+             GROUP BY DATE(ordered_at)
+             ORDER BY day ASC"
+        );
+
         $title = 'التقارير والإحصائيات';
-        viewWithLayout('admin/reports', compact('dupStats', 'recentAlerts', 'ordersByStatus', 'deptStats', 'topDoctors', 'title'));
+        viewWithLayout('admin/reports', compact(
+            'dupStats', 'recentAlerts', 'ordersByStatus', 'deptStats', 'topDoctors',
+            'estimatedSavings', 'avgTestCost', 'preventedCount',
+            'testsByCategory', 'ordersByDept', 'recentActivity', 'title'
+        ));
     }
 
     // ===== Settings =====
@@ -297,6 +338,7 @@ class AdminController extends Controller
         $setting = new Setting();
         $setting->set('duplicate_window_days', (int) ($_POST['duplicate_window_days'] ?? 30));
         $setting->set('site_name', $_POST['site_name'] ?? '');
+        $setting->set('avg_test_cost', (float) ($_POST['avg_test_cost'] ?? 150));
         flash('success', 'تم تحديث الإعدادات');
         redirect('/admin/settings');
     }

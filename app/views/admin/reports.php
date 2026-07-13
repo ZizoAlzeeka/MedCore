@@ -31,6 +31,23 @@
     </div>
 </div>
 
+<!-- ⚡ Financial savings highlight -->
+<div class="card mb-3 savings-card">
+    <div class="card-body d-flex align-items-center justify-content-between flex-wrap">
+        <div>
+            <div class="savings-label"><i class="bi bi-cash-stack"></i> التوفير المالي التقديري</div>
+            <div class="savings-amount"><?= number_format((float)$estimatedSavings, 0) ?> <span class="savings-currency">ر.س</span></div>
+            <div class="savings-detail">
+                تم منع <strong><?= $preventedCount ?></strong> تحليل مكرر × متوسط التكلفة
+                <strong><?= number_format($avgTestCost, 0) ?> ر.س</strong> للتحليل الواحد
+            </div>
+        </div>
+        <div class="savings-icon">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3">
     <!-- Orders by status -->
     <div class="col-lg-6">
@@ -131,6 +148,64 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚡ NEW: Tests by Category -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-tags text-purple"></i> توزيع التحاليل حسب الفئة</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>الفئة</th><th>عدد التحاليل</th><th>النسبة</th></tr></thead>
+                    <tbody>
+                        <?php $maxCat = max(array_column($testsByCategory, 'cnt') ?: [1]); ?>
+                        <?php foreach ($testsByCategory as $t): ?>
+                            <tr>
+                                <td><?= e($t['category']) ?></td>
+                                <td class="fw-bold"><?= $t['cnt'] ?></td>
+                                <td>
+                                    <div class="progress" style="height: 6px; min-width: 80px;">
+                                        <div class="progress-bar bg-info" style="width: <?= round(($t['cnt']/$maxCat)*100) ?>%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($testsByCategory)): ?>
+                            <tr><td colspan="3" class="text-center text-muted py-3">لا بيانات</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⚡ NEW: Orders by Department -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-diagram-3-fill text-purple"></i> الطلبات حسب القسم</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>القسم</th><th>عدد الطلبات</th><th>النسبة</th></tr></thead>
+                    <tbody>
+                        <?php $maxOrders = max(array_column($ordersByDept, 'orders_count') ?: [1]); ?>
+                        <?php foreach ($ordersByDept as $d): ?>
+                            <tr>
+                                <td><?= e($d['name_ar']) ?></td>
+                                <td class="fw-bold"><?= $d['orders_count'] ?></td>
+                                <td>
+                                    <div class="progress" style="height: 6px; min-width: 80px;">
+                                        <div class="progress-bar bg-success" style="width: <?= round(($d['orders_count']/$maxOrders)*100) ?>%"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        <?php if (empty($ordersByDept)): ?>
+                            <tr><td colspan="3" class="text-center text-muted py-3">لا بيانات بعد</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

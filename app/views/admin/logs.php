@@ -28,7 +28,14 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-file-text text-danger"></i> محتوى آخر ملف سجل (آخر 200 سطر)</span>
-                <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise"></i> تحديث</button>
+                <div class="d-flex gap-1">
+                    <a href="<?= url('/download-logs') ?>" class="btn btn-sm btn-outline-primary" download>
+                        <i class="bi bi-download"></i> تحميل الكل
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="window.location.reload()">
+                        <i class="bi bi-arrow-clockwise"></i> تحديث
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <pre style="direction:ltr;text-align:left;background:#1e1e2e;color:#e0e0e0;padding:14px;font-size:11px;max-height:600px;overflow:auto;border-radius:0 0 14px 14px;"><?= e($latestContent ?: 'لا محتوى') ?></pre>

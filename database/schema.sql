@@ -92,18 +92,22 @@ CREATE TABLE IF NOT EXISTS `test_orders` (
   `patient_id` INT UNSIGNED NOT NULL,
   `doctor_id` INT UNSIGNED DEFAULT NULL,
   `test_id` INT UNSIGNED NOT NULL,
+  `appointment_id` INT UNSIGNED DEFAULT NULL,
   `diagnosis_icd` VARCHAR(15) DEFAULT NULL,
   `status` ENUM('ordered','in_progress','result_uploaded','cancelled','duplicate_skipped') NOT NULL DEFAULT 'ordered',
   `ordered_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `notes` TEXT DEFAULT NULL,
+  `estimated_cost` DECIMAL(10,2) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_orders_patient` (`patient_id`),
   KEY `idx_orders_doctor` (`doctor_id`),
   KEY `idx_orders_test` (`test_id`),
+  KEY `idx_orders_appt` (`appointment_id`),
   KEY `idx_orders_status` (`status`),
   CONSTRAINT `fk_orders_patient` FOREIGN KEY (`patient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_orders_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_orders_test` FOREIGN KEY (`test_id`) REFERENCES `tests_catalog` (`id`) ON DELETE RESTRICT
+  CONSTRAINT `fk_orders_test` FOREIGN KEY (`test_id`) REFERENCES `tests_catalog` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `fk_orders_appt` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ===== 7. test_results =====

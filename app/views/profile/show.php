@@ -22,6 +22,72 @@
                 <?php endif; ?>
             </div>
         </div>
+
+        <?php if (!empty($medicalSummary)): ?>
+        <!-- ⚡ Medical Summary for patients -->
+        <div class="card mt-3">
+            <div class="card-header gradient"><i class="bi bi-clipboard2-heart"></i> ملخص طبي</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td><i class="bi bi-clipboard2-data text-purple"></i> إجمالي التحاليل</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['total_tests'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-check2-circle text-success"></i> نتائج مكتملة</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['completed_tests'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-hourglass-split text-warning"></i> قيد التنفيذ</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['pending_tests'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-capsules text-pink"></i> خطط العلاج</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['treatments'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-calendar-check text-info"></i> المواعيد</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['appointments'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-calendar-event text-success"></i> مواعيد قادمة</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['upcoming_appointments'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-bell text-danger"></i> إشعارات غير مقروءة</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['unread_notifications'] ?></td>
+                    </tr>
+                    <tr>
+                        <td><i class="bi bi-diagram-2 text-secondary"></i> إحالات</td>
+                        <td class="fw-bold text-end"><?= $medicalSummary['referrals_received'] ?></td>
+                    </tr>
+                    <?php if (!empty($medicalSummary['last_visit'])): ?>
+                    <tr>
+                        <td><i class="bi bi-clock-history text-primary"></i> آخر زيارة</td>
+                        <td class="small text-end"><?= formatDate($medicalSummary['last_visit'], true) ?></td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($user['workSummary'])): ?>
+        <!-- ⚡ Work Summary for staff -->
+        <div class="card mt-3">
+            <div class="card-header gradient"><i class="bi bi-bar-chart"></i> ملخص الأداء</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0">
+                    <?php foreach ($user['workSummary'] as $label => $value): ?>
+                        <tr>
+                            <td><?= e($label) ?></td>
+                            <td class="fw-bold text-end"><?= e($value) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="col-lg-8">

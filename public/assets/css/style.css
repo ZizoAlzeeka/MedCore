@@ -930,3 +930,56 @@ html {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
 }
+
+/* ============================================================
+   ⚡ Financial savings card (admin reports)
+   ============================================================ */
+.savings-card {
+    background: linear-gradient(135deg, #6C63FF 0%, #9D4EDD 50%, #4FC3F7 100%);
+    color: #fff;
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+}
+.savings-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 250px;
+    height: 250px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 50%;
+}
+.savings-label {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+.savings-amount {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.savings-currency {
+    font-size: 22px;
+    font-weight: 600;
+    opacity: 0.85;
+}
+.savings-detail {
+    font-size: 12px;
+    opacity: 0.85;
+    max-width: 400px;
+}
+.savings-icon {
+    font-size: 80px;
+    opacity: 0.3;
+}
+@media (max-width: 768px) {
+    .savings-amount { font-size: 32px; }
+    .savings-icon { font-size: 60px; }
+}
