@@ -83,7 +83,9 @@ if (Env::get('APP_DEBUG', 'false') === 'true') {
 // The flag file lives in database/.migrated and is invalidated automatically
 // when the container restarts (ephemeral filesystem on Coolify/Render).
 // To force a re-migration: delete database/.migrated
-$migrationFlagFile = __DIR__ . '/database/.migrated';
+//
+// ⚡ Force re-migration after financial fields removal — bump flag file name
+$migrationFlagFile = __DIR__ . '/database/.migrated_v2';
 if (!file_exists($migrationFlagFile)) {
     try {
         $migrationMessages = AutoMigrator::runIfNeeded();

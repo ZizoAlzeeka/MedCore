@@ -31,23 +31,6 @@
     </div>
 </div>
 
-<!-- ⚡ Financial savings highlight -->
-<div class="card mb-3 savings-card">
-    <div class="card-body d-flex align-items-center justify-content-between flex-wrap">
-        <div>
-            <div class="savings-label"><i class="bi bi-cash-stack"></i> التوفير المالي التقديري</div>
-            <div class="savings-amount"><?= number_format((float)$estimatedSavings, 0) ?> <span class="savings-currency">ر.س</span></div>
-            <div class="savings-detail">
-                تم منع <strong><?= $preventedCount ?></strong> تحليل مكرر × متوسط التكلفة
-                <strong><?= number_format($avgTestCost, 0) ?> ر.س</strong> للتحليل الواحد
-            </div>
-        </div>
-        <div class="savings-icon">
-            <i class="bi bi-graph-up-arrow"></i>
-        </div>
-    </div>
-</div>
-
 <div class="row g-3">
     <!-- Orders by status -->
     <div class="col-lg-6">

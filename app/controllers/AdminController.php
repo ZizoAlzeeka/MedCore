@@ -279,15 +279,7 @@ class AdminController extends Controller
              GROUP BY d.id ORDER BY orders_count DESC LIMIT 5"
         );
 
-        // ⚡ NEW: Financial savings estimate
-        // Each prevented duplicate saves an estimated average test cost (configurable in settings).
-        // Default: 150 SAR per prevented test.
-        $setting = new Setting();
-        $avgTestCost = (float) ($setting->get('avg_test_cost') ?: 150);
-        $preventedCount = $dupStats['prevented'];
-        $estimatedSavings = $preventedCount * $avgTestCost;
-
-        // Tests by category
+        // ⚡ NEW: Tests by category
         $testsByCategory = Database::fetchAll(
             "SELECT category, COUNT(*) AS cnt
              FROM tests_catalog
@@ -318,7 +310,6 @@ class AdminController extends Controller
         $title = 'التقارير والإحصائيات';
         viewWithLayout('admin/reports', compact(
             'dupStats', 'recentAlerts', 'ordersByStatus', 'deptStats', 'topDoctors',
-            'estimatedSavings', 'avgTestCost', 'preventedCount',
             'testsByCategory', 'ordersByDept', 'recentActivity', 'title'
         ));
     }
@@ -338,7 +329,6 @@ class AdminController extends Controller
         $setting = new Setting();
         $setting->set('duplicate_window_days', (int) ($_POST['duplicate_window_days'] ?? 30));
         $setting->set('site_name', $_POST['site_name'] ?? '');
-        $setting->set('avg_test_cost', (float) ($_POST['avg_test_cost'] ?? 150));
         flash('success', 'تم تحديث الإعدادات');
         redirect('/admin/settings');
     }

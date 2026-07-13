@@ -135,15 +135,16 @@ function updatePageMeta(meta) {
         if (subtitleEl) subtitleEl.textContent = meta.subtitle || '';
     }
     if (meta.currentUrl) {
-        // Update active nav link
+        // Update active nav link — match parent links when on sub-pages
         document.querySelectorAll('.sidebar-nav a').forEach(a => {
             const linkUrl = a.getAttribute('data-url') || a.getAttribute('href') || '';
-            // Compare path portion only
             try {
                 const u = new URL(linkUrl, window.location.origin);
-                const aPath = u.pathname;
+                const linkPath = u.pathname;
                 const curPath = meta.currentUrl;
-                a.classList.toggle('active', aPath === curPath);
+                const isActive = (curPath === linkPath)
+                    || (curPath.startsWith(linkPath + '/') && linkPath !== '/admin' && linkPath !== '/doctor' && linkPath !== '/reception' && linkPath !== '/labtech' && linkPath !== '/patient');
+                a.classList.toggle('active', isActive);
             } catch (e) {
                 a.classList.toggle('active', linkUrl === meta.currentUrl);
             }
@@ -156,7 +157,13 @@ function setActiveNav(urlPath) {
         const linkUrl = a.getAttribute('data-url') || a.getAttribute('href') || '';
         try {
             const u = new URL(linkUrl, window.location.origin);
-            a.classList.toggle('active', u.pathname === urlPath);
+            const linkPath = u.pathname;
+            // Match if: exact match OR urlPath starts with linkPath + '/' (sub-pages)
+            // e.g. link=/admin/users matches /admin/users/5/edit
+            // BUT avoid matching /admin matching /admin/users (parent shouldn't highlight when on child)
+            const isActive = (urlPath === linkPath)
+                || (urlPath.startsWith(linkPath + '/') && linkPath !== '/admin' && linkPath !== '/doctor' && linkPath !== '/reception' && linkPath !== '/labtech' && linkPath !== '/patient');
+            a.classList.toggle('active', isActive);
         } catch (e) {
             a.classList.toggle('active', false);
         }
@@ -307,110 +314,6 @@ function renderPageHtml(html, url, pushState, meta) {
 
     document.dispatchEvent(new CustomEvent('spa:navigated', { detail: { url, meta } }));
 }
-
-// ============================================================
-// AG Grid helper
-// ============================================================
-// Note: window.whenAgGridReady() is defined in the <head> of the layout
-// (see app/views/layouts/app.php), so it's available BEFORE this file loads.
-// Inline scripts in <body> use whenAgGridReady() to wait for AG Grid.
-
-// Expose initAgGrid on window for inline scripts
-window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
-    if (typeof agGrid === 'undefined') {
-        console.error('AG Grid library not loaded');
-        return null;
-    }
-    const target = (typeof el === 'string') ? document.querySelector(el) : el;
-    if (!target) {
-        console.error('AG Grid target not found:', el);
-        return null;
-    }
-
-    // Default options — RTL friendly + Arabic UI strings
-    // NOTE: AG Grid Community edition does NOT support:
-    //   - 'direction' property (use CSS dir="rtl" on container instead)
-    //   - 'menuTabs' in columnDef (requires ag-grid-enterprise)
-    //   - 'theme' in gridOptions (use CSS class on container instead)
-    const defaults = {
-        columnDefs: columnDefs,
-        rowData: rowData || [],
-        animateRows: true,
-        defaultColDef: {
-            flex: 1,
-            minWidth: 100,
-            resizable: true,
-            sortable: true,
-            filter: true,
-            floatingFilter: true,
-        },
-        pagination: true,
-        paginationPageSize: 25,
-        paginationPageSizeSelector: [10, 25, 50, 100],
-        enableCellTextSelection: true,
-        ensureDomOrder: true,
-        suppressCellFocus: true,
-        localeText: window.AG_GRID_AR_LOCALE || {},
-    };
-
-    const gridOptions = Object.assign({}, defaults, opts);
-    // Ensure CSS classes are on the element (theme + RTL + custom)
-    target.className = (target.className || '') + ' ag-theme-quartz medcore-ag-grid';
-    target.setAttribute('dir', 'rtl');
-
-    return agGrid.createGrid(target, gridOptions);
-};
-
-// Arabic locale strings for AG Grid (subset — covers common UI)
-window.AG_GRID_AR_LOCALE = {
-    // pagination
-    page: 'صفحة',
-    more: 'المزيد',
-    to: 'إلى',
-    of: 'من',
-    next: 'التالي',
-    last: 'الأخير',
-    first: 'الأول',
-    previous: 'السابق',
-    loadingOoo: 'جاري التحميل...',
-    noRowsToShow: 'لا توجد بيانات',
-    // pinning
-    pinColumn: 'تثبيت العمود',
-    pinLeft: 'تثبيت يسار',
-    pinRight: 'تثبيت يمين',
-    noPin: 'إلغاء التثبيت',
-    // menu
-    columnMenu: 'قائمة الأعمدة',
-    // filter
-    filterOoo: 'تصفية...',
-    equals: 'يساوي',
-    notEqual: 'لا يساوي',
-    contains: 'يحتوي',
-    notContains: 'لا يحتوي',
-    startsWith: 'يبدأ بـ',
-    endsWith: 'ينتهي بـ',
-    blank: 'فارغ',
-    notBlank: 'غير فارغ',
-    andCondition: 'و',
-    orCondition: 'أو',
-    applyFilter: 'تطبيق',
-    resetFilter: 'إعادة تعيين',
-    clearFilter: 'مسح',
-    // sort
-    sortAscending: 'ترتيب تصاعدي',
-    sortDescending: 'ترتيب تنازلي',
-    sortUnSort: 'إلغاء الترتيب',
-    // columns
-    columns: 'الأعمدة',
-    resetColumns: 'إعادة تعيين الأعمدة',
-    toolPanel: 'لوحة الأدوات',
-    // menu general
-    copy: 'نسخ',
-    ctrlC: 'Ctrl+C',
-    paste: 'لصق',
-    ctrlV: 'Ctrl+V',
-    export: 'تصدير',
-};
 
 // ============================================================
 // LOINC NLM API search helper (for admin/tests modal)

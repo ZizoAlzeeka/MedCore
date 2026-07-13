@@ -1,8 +1,8 @@
-<?php /** Admin: Tests Catalog with AG Grid + LOINC NLM API search */ ?>
+<?php /** Admin: Tests Catalog — native HTML table + LOINC search */ ?>
 <div class="page-header">
     <div>
         <h2 class="page-title"><i class="bi bi-clipboard2-pulse-fill"></i> <?= e($title) ?></h2>
-        <div class="page-subtitle">قاعدة بيانات التحاليل بمعيار LOINC — يستخدمها الأطباء عند الطلب</div>
+        <div class="page-subtitle">قاعدة بيانات التحاليل بمعيار LOINC — <?= count($tests) ?> تحليل</div>
     </div>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#testModal" onclick="resetTestForm()">
         <i class="bi bi-plus-circle"></i> إضافة تحليل
@@ -11,11 +11,60 @@
 
 <div class="card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-table text-purple"></i> قاعدة بيانات التحاليل (<?= count($tests) ?>)</span>
-        <small class="text-muted">بحث + ترتيب + تصفية + ترقيم صفحات تلقائي عبر AG Grid</small>
+        <span><i class="bi bi-table text-purple"></i> قاعدة بيانات التحاليل</span>
+        <small class="text-muted"><?= count($tests) ?> سجل</small>
     </div>
-    <div class="card-body p-2">
-        <div id="testsGrid" style="width:100%; height: 560px;"></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 medcore-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>كود LOINC</th>
+                        <th>الاسم (عربي)</th>
+                        <th>الاسم (إنجليزي)</th>
+                        <th>الفئة</th>
+                        <th>نوع العينة</th>
+                        <th style="width: 110px;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $csrf = Auth::csrfToken(); foreach ($tests as $i => $t): ?>
+                    <tr>
+                        <td class="text-muted"><?= $i + 1 ?></td>
+                        <td><span class="loinc-code"><?= e($t['loinc_code']) ?></span></td>
+                        <td class="fw-bold"><?= e($t['name_ar']) ?></td>
+                        <td dir="ltr" class="text-end small"><?= e($t['name_en'] ?: '-') ?></td>
+                        <td>
+                            <?php if (!empty($t['category'])): ?>
+                                <span class="badge bg-info"><?= e($t['category']) ?></span>
+                            <?php else: ?>
+                                <span class="text-muted">-</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="small"><?= e($t['sample_type'] ?: '-') ?></td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary" onclick='editTest(<?= json_encode($t, JSON_UNESCAPED_UNICODE) ?>)' title="تعديل">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form method="post" action="<?= url('/admin/tests/' . $t['id'] . '/delete') ?>" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">
+                                    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                    <button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($tests)): ?>
+                    <tr><td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 24px; opacity: 0.4;"></i>
+                        <p class="mt-2">لا تحاليل</p>
+                    </td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -83,88 +132,6 @@
 </div>
 
 <script>
-// ============================================================
-// AG Grid: tests catalog — uses whenAgGridReady (defined in <head>)
-// ============================================================
-(function() {
-    const testsData = <?= json_encode($tests, JSON_UNESCAPED_UNICODE) ?>;
-
-    const roleBadgeClass = (status) => {
-        return 'bg-info';
-    };
-
-    const columns = [
-        {
-            headerName: '#',
-            valueGetter: params => params.node.rowIndex + 1,
-            width: 60,
-            maxWidth: 80,
-            sortable: false,
-            filter: false,
-            pinned: 'right',
-            cellClass: 'text-center text-muted',
-        },
-        {
-            headerName: 'كود LOINC',
-            field: 'loinc_code',
-            width: 130,
-            cellRenderer: params => `<span class="loinc-code">${params.value || ''}</span>`,
-        },
-        {
-            headerName: 'الاسم (عربي)',
-            field: 'name_ar',
-            minWidth: 200,
-            cellClass: 'fw-bold',
-        },
-        {
-            headerName: 'الاسم (إنجليزي)',
-            field: 'name_en',
-            minWidth: 180,
-            cellClass: 'small',
-            cellRenderer: params => `<span dir="ltr">${params.value || ''}</span>`,
-        },
-        {
-            headerName: 'الفئة',
-            field: 'category',
-            width: 150,
-            cellRenderer: params => params.value ? `<span class="badge bg-info">${params.value}</span>` : '',
-        },
-        {
-            headerName: 'نوع العينة',
-            field: 'sample_type',
-            width: 130,
-        },
-        {
-            headerName: 'إجراءات',
-            width: 150,
-            sortable: false,
-            filter: false,
-            pinned: 'left',
-            cellRenderer: function(params) {
-                const t = params.data;
-                const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-                const editBtn = `<button class="btn btn-sm btn-outline-primary me-1" onclick='editTest(${JSON.stringify(t)})' title="تعديل"><i class="bi bi-pencil"></i></button>`;
-                const deleteForm = `<form method="post" action="<?= url('/admin/tests') ?>/${t.id}/delete" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">` +
-                    `<input type="hidden" name="csrf_token" value="${csrf}">` +
-                    `<button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>` +
-                    `</form>`;
-                return `<div class="text-nowrap">${editBtn}${deleteForm}</div>`;
-            },
-        },
-    ];
-
-    // ⚡ Wait for AG Grid library to be available, then init
-    window.whenAgGridReady(function() {
-        window.initAgGrid('#testsGrid', columns, testsData, {
-            paginationPageSize: 15,
-            paginationPageSizeSelector: [10, 15, 25, 50, 100],
-        });
-    });
-})();
-
-// ============================================================
-// Test modal: form helpers + LOINC search
-// ============================================================
 function resetTestForm() {
     document.getElementById('testForm').action = '<?= url("/admin/tests/store") ?>';
     document.getElementById('test_id').value = '';
@@ -194,7 +161,7 @@ function editTest(t) {
 // LOINC NLM API search — LIVE as user types (250ms debounce)
 // ============================================================
 let loincSearchTimer = null;
-let loincSearchReqId = 0; // race-condition guard: only render latest response
+let loincSearchReqId = 0;
 
 function performLoincSearch() {
     const input = document.getElementById('loincSearchInput');
@@ -207,13 +174,10 @@ function performLoincSearch() {
         return;
     }
 
-    // Show inline spinner immediately (don't clear previous results entirely —
-    // keep them visible while new ones load, just show spinner on top)
     resultsEl.innerHTML = '<div class="text-center py-2 text-primary"><div class="spinner-border spinner-border-sm"></div> <small>جاري البحث في قاعدة LOINC عن "' + q.replace(/[<>]/g, '') + '"...</small></div>';
 
     const reqId = ++loincSearchReqId;
     searchLoincApi(q, function(results) {
-        // Only render if this is still the latest request
         if (reqId !== loincSearchReqId) return;
 
         if (!results || results.length === 0) {
@@ -247,20 +211,16 @@ function pickLoincResult(r) {
     if (r.category) document.getElementById('test_cat').value = r.category;
     if (r.sample_type) document.getElementById('test_sample').value = r.sample_type;
     document.getElementById('loincResults').innerHTML =
-        '<div class="alert alert-success mb-0 py-2"><i class="bi bi-check-circle"></i> تم تعبئة الحقول من قاعدة LOINC. راجع الاسم العربي وأكمله إذا لزم.</div>';
+        '<div class="alert alert-success mb-0 py-2"><i class="bi bi-check-circle"></i> تم تعبئة الحقول من قاعدة LOINC.</div>';
 }
 
-// Wire up input listeners — works on both initial load AND after SPA navigation.
-// We re-attach on every page navigation because the input element is recreated.
 function initLoincSearchInput() {
     const input = document.getElementById('loincSearchInput');
     const btn = document.getElementById('loincSearchBtn');
     if (!input) return;
-    // Avoid double-binding: mark the input
     if (input.dataset.loincBound === '1') return;
     input.dataset.loincBound = '1';
 
-    // Live search as user types (250ms debounce for snappy UX)
     input.addEventListener('input', function() {
         clearTimeout(loincSearchTimer);
         loincSearchTimer = setTimeout(performLoincSearch, 250);
@@ -272,7 +232,6 @@ function initLoincSearchInput() {
             performLoincSearch();
         }
     });
-    // Trigger initial search when modal opens with focus
     input.addEventListener('focus', function() {
         if (input.value.trim().length >= 2 && !document.getElementById('loincResults').innerHTML.trim()) {
             performLoincSearch();
@@ -287,13 +246,10 @@ function initLoincSearchInput() {
     }
 }
 
-// Initial page load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initLoincSearchInput);
 } else {
-    // We're already loaded (e.g. SPA navigation just swapped content)
     initLoincSearchInput();
 }
-// SPA navigation: re-bind when new content arrives
 document.addEventListener('spa:navigated', initLoincSearchInput);
 </script>

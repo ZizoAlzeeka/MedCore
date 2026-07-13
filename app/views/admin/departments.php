@@ -1,22 +1,62 @@
-<?php /** Admin: Departments — card view + AG Grid table */ ?>
+<?php /** Admin: Departments — native HTML table + card view */ ?>
 <div class="page-header">
     <div>
         <h2 class="page-title"><i class="bi bi-diagram-3-fill"></i> <?= e($title) ?></h2>
-        <div class="page-subtitle">إدارة الأقسام الطبية — أضف قسماً جديداً أو عدّل القائم</div>
+        <div class="page-subtitle">إدارة الأقسام الطبية — <?= count($depts) ?> قسم</div>
     </div>
     <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#deptModal" onclick="resetDeptForm()">
         <i class="bi bi-plus-circle"></i> إضافة قسم
     </button>
 </div>
 
-<!-- AG Grid view for sorting/filtering -->
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-table text-purple"></i> جدول الأقسام (<?= count($depts) ?>)</span>
-        <small class="text-muted">جدول تفاعلي — بحث + ترتيب + تصفية</small>
+        <span><i class="bi bi-table text-purple"></i> جدول الأقسام</span>
+        <small class="text-muted"><?= count($depts) ?> سجل</small>
     </div>
-    <div class="card-body p-2">
-        <div id="deptsGrid" style="width:100%; height: 360px;"></div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 medcore-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>الاسم (عربي)</th>
+                        <th>الاسم (إنجليزي)</th>
+                        <th>الوصف</th>
+                        <th>الأطباء</th>
+                        <th style="width: 110px;">إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php $csrf = Auth::csrfToken(); foreach ($depts as $i => $d): ?>
+                    <tr>
+                        <td class="text-muted"><?= $i + 1 ?></td>
+                        <td class="fw-bold"><?= e($d['name_ar']) ?></td>
+                        <td dir="ltr" class="text-end small"><?= e($d['name_en'] ?: '-') ?></td>
+                        <td class="small text-muted"><?= e(mb_substr($d['description'] ?: 'لا وصف', 0, 60)) ?><?= mb_strlen($d['description'] ?? '') > 60 ? '...' : '' ?></td>
+                        <td><span class="badge bg-primary"><?= $d['doctors_count'] ?> طبيب</span></td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary" onclick='editDept(<?= json_encode($d, JSON_UNESCAPED_UNICODE) ?>)' title="تعديل">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form method="post" action="<?= url('/admin/departments/' . $d['id'] . '/delete') ?>" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">
+                                    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                                    <button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($depts)): ?>
+                    <tr><td colspan="6" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size: 24px; opacity: 0.4;"></i>
+                        <p class="mt-2">لا أقسام</p>
+                    </td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -94,69 +134,6 @@
 </div>
 
 <script>
-// ⚡ AG Grid for departments — uses whenAgGridReady (defined in <head>)
-(function() {
-    const deptsData = <?= json_encode($depts, JSON_UNESCAPED_UNICODE) ?>;
-    const columns = [
-        {
-            headerName: '#',
-            valueGetter: params => params.node.rowIndex + 1,
-            width: 60, maxWidth: 80,
-            sortable: false, filter: false,
-            pinned: 'right',
-            cellClass: 'text-center text-muted',
-        },
-        {
-            headerName: 'الاسم (عربي)',
-            field: 'name_ar',
-            minWidth: 180,
-            cellClass: 'fw-bold',
-        },
-        {
-            headerName: 'الاسم (إنجليزي)',
-            field: 'name_en',
-            minWidth: 150,
-            cellRenderer: params => `<span dir="ltr">${params.value || ''}</span>`,
-        },
-        {
-            headerName: 'الوصف',
-            field: 'description',
-            minWidth: 220,
-            cellClass: 'small',
-        },
-        {
-            headerName: 'عدد الأطباء',
-            field: 'doctors_count',
-            width: 120,
-            cellRenderer: params => `<span class="badge bg-primary">${params.value || 0} طبيب</span>`,
-        },
-        {
-            headerName: 'إجراءات',
-            width: 140,
-            sortable: false,
-            filter: false,
-            pinned: 'left',
-            cellRenderer: function(params) {
-                const d = params.data;
-                const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
-                const editBtn = `<button class="btn btn-sm btn-outline-primary me-1" onclick='editDept(${JSON.stringify(d)})' title="تعديل"><i class="bi bi-pencil"></i></button>`;
-                const deleteForm = `<form method="post" action="<?= url('/admin/departments') ?>/${d.id}/delete" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">` +
-                    `<input type="hidden" name="csrf_token" value="${csrf}">` +
-                    `<button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>` +
-                    `</form>`;
-                return `<div class="text-nowrap">${editBtn}${deleteForm}</div>`;
-            },
-        },
-    ];
-
-    // ⚡ Wait for AG Grid library to be available, then init
-    window.whenAgGridReady(function() {
-        window.initAgGrid('#deptsGrid', columns, deptsData, {
-            pagination: false,
-        });
-    });
-})();
-
 function resetDeptForm() {
     document.getElementById('deptForm').action = '<?= url("/admin/departments/store") ?>';
     document.getElementById('dept_id').value = '';
