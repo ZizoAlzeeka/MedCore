@@ -39,7 +39,9 @@ function url($path = '')
 
 function asset($path)
 {
-    return url('/public/assets/' . ltrim($path, '/'));
+    $fullPath = dirname(__DIR__, 2) . '/public/assets/' . ltrim($path, '/');
+    $version = file_exists($fullPath) ? '?' . substr(md5_file($fullPath), 0, 8) : '';
+    return url('/public/assets/' . ltrim($path, '/')) . $version;
 }
 
 function redirect($path)
