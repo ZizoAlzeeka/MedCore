@@ -16,6 +16,22 @@ class Auth
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);
+            // ⚡ Don't use strict mode — it can cause session ID rotation issues
+            // when the client sends a PHPSESSID that the server doesn't recognize
+            // (e.g. after container restart, or with shared session storage).
+            // Without strict mode, PHP accepts the client-provided session ID
+            // and creates an empty session for it — which is what we want.
+            ini_set('session.use_strict_mode', '0');
+            session_start();
+
+            // ⚡ Ensure CSRF token is generated immediately so it's available
+            // on every page render (even before any form is shown).
+            if (empty($_SESSION['csrf_token'])) {
+                $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            }
+            // Force session write to disk immediately so subsequent requests
+            // (including AJAX POSTs) can read it.
+            session_write_close();
             session_start();
         }
     }

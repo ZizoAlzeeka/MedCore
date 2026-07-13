@@ -47,7 +47,7 @@ display_errors=Off\n\
 log_errors=On\n\
 session.gc_maxlifetime=7200\n\
 session.cookie_lifetime=0\n\
-session.use_strict_mode=1\n\
+session.use_strict_mode=0\n\
 realpath_cache_size=4096K\n\
 realpath_cache_ttl=600\n' > /usr/local/etc/php/conf.d/production.ini
 
