@@ -120,6 +120,41 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
 <meta name="theme-color" content="#6C63FF">
 
+<!-- ⚡ CRITICAL: Define whenAgGridReady EARLY in <head> so inline scripts in <body>
+     can use it immediately. This function polls for AG Grid library to load
+     (loaded with defer, so it loads after this script but before DOMContentLoaded).
+     Works for BOTH initial page load AND SPA navigation (where DOMContentLoaded
+     has already fired). -->
+<script>
+window.whenAgGridReady = function(callback, maxWait) {
+    maxWait = maxWait || 10000; // 10 seconds max
+    var start = Date.now();
+    function check() {
+        if (typeof agGrid !== 'undefined' && typeof window.initAgGrid === 'function') {
+            try { callback(); } catch(e) { console.error('AG Grid init error:', e); }
+            return;
+        }
+        if (Date.now() - start > maxWait) {
+            console.error('AG Grid failed to load after ' + maxWait + 'ms');
+            document.querySelectorAll('[id$="Grid"]').forEach(function(el) {
+                if (el.children.length === 0) {
+                    el.innerHTML = '<div style="padding:20px;text-align:center;color:#dc3545;">' +
+                        '<i class="bi bi-exclamation-triangle" style="font-size:32px;"></i>' +
+                        '<p style="margin-top:10px;">تعذّر تحميل مكتبة الجداول. يرجى تحديث الصفحة.</p>' +
+                        '<button onclick="window.location.reload()" class="btn btn-sm btn-primary">إعادة التحميل</button>' +
+                        '</div>';
+                }
+            });
+            return;
+        }
+        setTimeout(check, 50);
+    }
+    check();
+};
+// Global queue for SPA navigation: inline scripts can push callbacks here
+window.__agGridCallbacks = window.__agGridCallbacks || [];
+</script>
+
 <!-- ⚡ Favicon: multiple sizes for all browsers + devices -->
 <link rel="icon" type="image/x-icon" href="<?= asset('img/favicon.ico') ?>">
 <link rel="icon" type="image/png" sizes="32x32" href="<?= asset('img/favicon-32x32.png') ?>">

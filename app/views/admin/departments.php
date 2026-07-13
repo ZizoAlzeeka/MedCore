@@ -94,8 +94,8 @@
 </div>
 
 <script>
-// ⚡ AG Grid for departments — runs after defer scripts
-window.addEventListener('DOMContentLoaded', function() {
+// ⚡ AG Grid for departments — uses whenAgGridReady (defined in <head>)
+(function() {
     const deptsData = <?= json_encode($depts, JSON_UNESCAPED_UNICODE) ?>;
     const columns = [
         {
@@ -149,13 +149,13 @@ window.addEventListener('DOMContentLoaded', function() {
         },
     ];
 
-    // ⚡ Wait for AG Grid library + helper to be available
-    window.waitForAgGrid(function() {
+    // ⚡ Wait for AG Grid library to be available, then init
+    window.whenAgGridReady(function() {
         window.initAgGrid('#deptsGrid', columns, deptsData, {
             pagination: false,
         });
     });
-});
+})();
 
 function resetDeptForm() {
     document.getElementById('deptForm').action = '<?= url("/admin/departments/store") ?>';

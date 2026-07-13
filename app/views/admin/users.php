@@ -45,8 +45,9 @@
 </div>
 
 <script>
-// ⚡ Use DOMContentLoaded so this runs AFTER defer scripts (ag-grid + app.js)
-window.addEventListener('DOMContentLoaded', function() {
+// ⚡ AG Grid init — uses whenAgGridReady (defined in <head>) which polls for
+// AG Grid library to load. Works on BOTH initial page load AND SPA navigation.
+(function() {
     const usersData = <?= json_encode($users, JSON_UNESCAPED_UNICODE) ?>;
     const roleLabels = {
         admin: 'مدير', doctor: 'طبيب', reception: 'استقبال',
@@ -141,11 +142,11 @@ window.addEventListener('DOMContentLoaded', function() {
         },
     ];
 
-    // ⚡ Wait for AG Grid library + helper to be available
-    window.waitForAgGrid(function() {
+    // ⚡ Wait for AG Grid library to be available, then init
+    window.whenAgGridReady(function() {
         window.initAgGrid('#usersGrid', columns, usersData, {
             paginationPageSize: 25,
         });
     });
-});
+})();
 </script>

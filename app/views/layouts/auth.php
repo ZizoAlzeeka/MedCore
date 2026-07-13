@@ -9,6 +9,24 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
 <title><?= e($appName) ?> — <?= e($title ?? 'تسجيل') ?></title>
 <meta name="theme-color" content="#6C63FF">
 
+<!-- ⚡ AG Grid readiness helper (defined early for inline scripts) -->
+<script>
+window.whenAgGridReady = function(callback, maxWait) {
+    maxWait = maxWait || 10000;
+    var start = Date.now();
+    function check() {
+        if (typeof agGrid !== 'undefined' && typeof window.initAgGrid === 'function') {
+            try { callback(); } catch(e) { console.error('AG Grid init error:', e); }
+            return;
+        }
+        if (Date.now() - start > maxWait) { console.error('AG Grid failed to load'); return; }
+        setTimeout(check, 50);
+    }
+    check();
+};
+window.__agGridCallbacks = window.__agGridCallbacks || [];
+</script>
+
 <!-- ⚡ Favicon: multiple sizes for all browsers + devices -->
 <link rel="icon" type="image/x-icon" href="<?= asset('img/favicon.ico') ?>">
 <link rel="icon" type="image/png" sizes="32x32" href="<?= asset('img/favicon-32x32.png') ?>">

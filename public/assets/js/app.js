@@ -311,54 +311,11 @@ function renderPageHtml(html, url, pushState, meta) {
 // ============================================================
 // AG Grid helper
 // ============================================================
-/**
- * Wait for AG Grid library + initAgGrid helper to be loaded.
- * Both are loaded with `defer` after inline scripts, so this function
- * must be callable BEFORE app.js is fully loaded.
- *
- * We attach it to window immediately (synchronously) so inline scripts
- * can call it, then defer the actual waiting logic until DOMContentLoaded.
- */
-window.waitForAgGrid = function(callback) {
-    // Defer the actual check until DOM is ready (defer scripts have run)
-    function startCheck() {
-        let attempts = 0;
-        const maxAttempts = 200; // 200 * 50ms = 10 seconds
-        function check() {
-            if (typeof agGrid !== 'undefined' && typeof window.initAgGrid === 'function') {
-                callback();
-                return;
-            }
-            attempts++;
-            if (attempts < maxAttempts) {
-                setTimeout(check, 50);
-            } else {
-                console.error('AG Grid failed to load after 10s — table will not render');
-                // Show error in the grid container so user knows what happened
-                document.querySelectorAll('[id$="Grid"]').forEach(el => {
-                    if (el.children.length === 0) {
-                        el.innerHTML = '<div style="padding:20px;text-align:center;color:#dc3545;">' +
-                            '<i class="bi bi-exclamation-triangle" style="font-size:32px;"></i>' +
-                            '<p style="margin-top:10px;">تعذّر تحميل مكتبة الجداول (AG Grid). يرجى تحديث الصفحة.</p>' +
-                            '<button onclick="window.location.reload()" class="btn btn-sm btn-primary">إعادة التحميل</button>' +
-                            '</div>';
-                    }
-                });
-            }
-        }
-        check();
-    }
+// Note: window.whenAgGridReady() is defined in the <head> of the layout
+// (see app/views/layouts/app.php), so it's available BEFORE this file loads.
+// Inline scripts in <body> use whenAgGridReady() to wait for AG Grid.
 
-    // If DOM is already ready, start checking immediately.
-    // Otherwise, wait for DOMContentLoaded (defer scripts run before this event).
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', startCheck);
-    } else {
-        startCheck();
-    }
-};
-
-// Also expose initAgGrid on window for inline scripts
+// Expose initAgGrid on window for inline scripts
 window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
     if (typeof agGrid === 'undefined') {
         console.error('AG Grid library not loaded');
