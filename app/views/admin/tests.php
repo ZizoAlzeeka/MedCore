@@ -84,9 +84,9 @@
 
 <script>
 // ============================================================
-// AG Grid: tests catalog
+// AG Grid: tests catalog — runs after defer scripts
 // ============================================================
-(function() {
+window.addEventListener('DOMContentLoaded', function() {
     const testsData = <?= json_encode($tests, JSON_UNESCAPED_UNICODE) ?>;
 
     const roleBadgeClass = (status) => {
@@ -142,9 +142,10 @@
             pinned: 'left',
             cellRenderer: function(params) {
                 const t = params.data;
+                const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
                 const editBtn = `<button class="btn btn-sm btn-outline-primary me-1" onclick='editTest(${JSON.stringify(t)})' title="تعديل"><i class="bi bi-pencil"></i></button>`;
                 const deleteForm = `<form method="post" action="<?= url('/admin/tests') ?>/${t.id}/delete" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">` +
-                    `<input type="hidden" name="csrf_token" value="${getCsrfToken()}">` +
+                    `<input type="hidden" name="csrf_token" value="${csrf}">` +
                     `<button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>` +
                     `</form>`;
                 return `<div class="text-nowrap">${editBtn}${deleteForm}</div>`;
@@ -152,19 +153,14 @@
         },
     ];
 
-    // Wait for AG Grid + helper to be available
-    function tryInit() {
-        if (typeof agGrid === 'undefined' || typeof initAgGrid !== 'function') {
-            setTimeout(tryInit, 100);
-            return;
-        }
-        initAgGrid('#testsGrid', columns, testsData, {
+    // ⚡ Wait for AG Grid library + helper to be available
+    window.waitForAgGrid(function() {
+        window.initAgGrid('#testsGrid', columns, testsData, {
             paginationPageSize: 15,
             paginationPageSizeSelector: [10, 15, 25, 50, 100],
         });
-    }
-    tryInit();
-})();
+    });
+});
 
 // ============================================================
 // Test modal: form helpers + LOINC search

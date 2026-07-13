@@ -94,8 +94,8 @@
 </div>
 
 <script>
-// AG Grid for departments
-(function() {
+// ⚡ AG Grid for departments — runs after defer scripts
+window.addEventListener('DOMContentLoaded', function() {
     const deptsData = <?= json_encode($depts, JSON_UNESCAPED_UNICODE) ?>;
     const columns = [
         {
@@ -138,7 +138,7 @@
             pinned: 'left',
             cellRenderer: function(params) {
                 const d = params.data;
-                const csrf = getCsrfToken();
+                const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
                 const editBtn = `<button class="btn btn-sm btn-outline-primary me-1" onclick='editDept(${JSON.stringify(d)})' title="تعديل"><i class="bi bi-pencil"></i></button>`;
                 const deleteForm = `<form method="post" action="<?= url('/admin/departments') ?>/${d.id}/delete" style="display:inline" onsubmit="return confirm('تأكيد الحذف؟')">` +
                     `<input type="hidden" name="csrf_token" value="${csrf}">` +
@@ -149,17 +149,13 @@
         },
     ];
 
-    function tryInit() {
-        if (typeof agGrid === 'undefined' || typeof initAgGrid !== 'function') {
-            setTimeout(tryInit, 100);
-            return;
-        }
-        initAgGrid('#deptsGrid', columns, deptsData, {
+    // ⚡ Wait for AG Grid library + helper to be available
+    window.waitForAgGrid(function() {
+        window.initAgGrid('#deptsGrid', columns, deptsData, {
             pagination: false,
         });
-    }
-    tryInit();
-})();
+    });
+});
 
 function resetDeptForm() {
     document.getElementById('deptForm').action = '<?= url("/admin/departments/store") ?>';

@@ -8,6 +8,18 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title><?= e($appName) ?> — <?= e($title ?? 'تسجيل') ?></title>
 <meta name="theme-color" content="#6C63FF">
+
+<!-- ⚡ Favicon: multiple sizes for all browsers + devices -->
+<link rel="icon" type="image/x-icon" href="<?= asset('img/favicon.ico') ?>">
+<link rel="icon" type="image/png" sizes="32x32" href="<?= asset('img/favicon-32x32.png') ?>">
+<link rel="icon" type="image/png" sizes="16x16" href="<?= asset('img/favicon-16x16.png') ?>">
+<link rel="apple-touch-icon" sizes="180x180" href="<?= asset('img/apple-touch-icon.png') ?>">
+<link rel="apple-touch-icon" href="<?= asset('img/apple-touch-icon.png') ?>">
+<link rel="mask-icon" href="<?= asset('img/icon-512x512.png') ?>" color="#6C63FF">
+
+<!-- ⚡ PWA: manifest for installable app -->
+<link rel="manifest" href="<?= asset('manifest.json') ?>">
+
 <!-- ⚡ Performance: preconnect to CDNs -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>

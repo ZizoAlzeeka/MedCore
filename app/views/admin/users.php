@@ -45,7 +45,8 @@
 </div>
 
 <script>
-(function() {
+// ⚡ Use DOMContentLoaded so this runs AFTER defer scripts (ag-grid + app.js)
+window.addEventListener('DOMContentLoaded', function() {
     const usersData = <?= json_encode($users, JSON_UNESCAPED_UNICODE) ?>;
     const roleLabels = {
         admin: 'مدير', doctor: 'طبيب', reception: 'استقبال',
@@ -127,7 +128,7 @@
             pinned: 'left',
             cellRenderer: function(params) {
                 const u = params.data;
-                const csrf = getCsrfToken();
+                const csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
                 const editUrl = '<?= url('/admin/users') ?>/' + u.id + '/edit';
                 const toggleUrl = '<?= url('/admin/users') ?>/' + u.id + '/toggle';
                 const editBtn = `<a href="${editUrl}" class="btn btn-sm btn-outline-primary spa-link me-1" data-spa="1" data-url="${editUrl}" title="تعديل"><i class="bi bi-pencil"></i></a>`;
@@ -140,15 +141,11 @@
         },
     ];
 
-    function tryInit() {
-        if (typeof agGrid === 'undefined' || typeof initAgGrid !== 'function') {
-            setTimeout(tryInit, 100);
-            return;
-        }
-        initAgGrid('#usersGrid', columns, usersData, {
+    // ⚡ Wait for AG Grid library + helper to be available
+    window.waitForAgGrid(function() {
+        window.initAgGrid('#usersGrid', columns, usersData, {
             paginationPageSize: 25,
         });
-    }
-    tryInit();
-})();
+    });
+});
 </script>

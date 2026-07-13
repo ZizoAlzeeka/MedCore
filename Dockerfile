@@ -9,10 +9,16 @@ ENV DEBIAN_FRONTEND=noninteractive
 # ===== Apache modules: rewrite + headers + deflate (gzip) + expires + cache =====
 RUN a2enmod rewrite headers deflate expires cache
 
-# ===== PHP extensions: pdo_mysql + opcache + apcu (in-memory cache) =====
+# ===== PHP extensions: pdo_mysql + opcache + apcu + gd (image processing) =====
 # opcache is bundled with PHP; just enable it. APCu via PECL.
-RUN docker-php-ext-install pdo_mysql && \
-    docker-php-ext-enable pdo_mysql && \
+# GD required for image manipulation (favicon generation, etc.).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libpng-dev libjpeg62-turbo-dev libfreetype6-dev libzip-dev libicu-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install pdo_mysql gd zip intl && \
+    docker-php-ext-enable pdo_mysql gd zip intl opcache && \
     pecl install apcu && \
     docker-php-ext-enable apcu
 

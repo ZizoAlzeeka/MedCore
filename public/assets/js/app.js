@@ -312,15 +312,54 @@ function renderPageHtml(html, url, pushState, meta) {
 // AG Grid helper
 // ============================================================
 /**
- * Initialize an AG Grid on a given element.
+ * Wait for AG Grid library + initAgGrid helper to be loaded.
+ * Both are loaded with `defer` after inline scripts, so this function
+ * must be callable BEFORE app.js is fully loaded.
  *
- * @param {string|HTMLElement} el - selector or DOM element
- * @param {Array} columnDefs - AG Grid column defs
- * @param {Array} rowData - data array
- * @param {Object} opts - extra options (gridOptions)
- * @returns {agGrid.Grid} AG Grid API instance
+ * We attach it to window immediately (synchronously) so inline scripts
+ * can call it, then defer the actual waiting logic until DOMContentLoaded.
  */
-function initAgGrid(el, columnDefs, rowData, opts = {}) {
+window.waitForAgGrid = function(callback) {
+    // Defer the actual check until DOM is ready (defer scripts have run)
+    function startCheck() {
+        let attempts = 0;
+        const maxAttempts = 200; // 200 * 50ms = 10 seconds
+        function check() {
+            if (typeof agGrid !== 'undefined' && typeof window.initAgGrid === 'function') {
+                callback();
+                return;
+            }
+            attempts++;
+            if (attempts < maxAttempts) {
+                setTimeout(check, 50);
+            } else {
+                console.error('AG Grid failed to load after 10s — table will not render');
+                // Show error in the grid container so user knows what happened
+                document.querySelectorAll('[id$="Grid"]').forEach(el => {
+                    if (el.children.length === 0) {
+                        el.innerHTML = '<div style="padding:20px;text-align:center;color:#dc3545;">' +
+                            '<i class="bi bi-exclamation-triangle" style="font-size:32px;"></i>' +
+                            '<p style="margin-top:10px;">تعذّر تحميل مكتبة الجداول (AG Grid). يرجى تحديث الصفحة.</p>' +
+                            '<button onclick="window.location.reload()" class="btn btn-sm btn-primary">إعادة التحميل</button>' +
+                            '</div>';
+                    }
+                });
+            }
+        }
+        check();
+    }
+
+    // If DOM is already ready, start checking immediately.
+    // Otherwise, wait for DOMContentLoaded (defer scripts run before this event).
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startCheck);
+    } else {
+        startCheck();
+    }
+};
+
+// Also expose initAgGrid on window for inline scripts
+window.initAgGrid = function(el, columnDefs, rowData, opts = {}) {
     if (typeof agGrid === 'undefined') {
         console.error('AG Grid library not loaded');
         return null;
@@ -352,7 +391,7 @@ function initAgGrid(el, columnDefs, rowData, opts = {}) {
         enableCellTextSelection: true,
         ensureDomOrder: true,
         suppressCellFocus: true,
-        localeText: AG_GRID_AR_LOCALE,
+        localeText: window.AG_GRID_AR_LOCALE || {},
         theme: 'ag-theme-quartz',
     };
 
@@ -361,10 +400,10 @@ function initAgGrid(el, columnDefs, rowData, opts = {}) {
     target.className = (target.className || '') + ' ag-theme-quartz medcore-ag-grid';
 
     return agGrid.createGrid(target, gridOptions);
-}
+};
 
 // Arabic locale strings for AG Grid (subset — covers common UI)
-const AG_GRID_AR_LOCALE = {
+window.AG_GRID_AR_LOCALE = {
     // pagination
     page: 'صفحة',
     more: 'المزيد',

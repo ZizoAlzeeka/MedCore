@@ -120,6 +120,14 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 <meta name="csrf-token" content="<?= Auth::csrfToken() ?>">
 <meta name="theme-color" content="#6C63FF">
 
+<!-- ⚡ Favicon: multiple sizes for all browsers + devices -->
+<link rel="icon" type="image/x-icon" href="<?= asset('img/favicon.ico') ?>">
+<link rel="icon" type="image/png" sizes="32x32" href="<?= asset('img/favicon-32x32.png') ?>">
+<link rel="icon" type="image/png" sizes="16x16" href="<?= asset('img/favicon-16x16.png') ?>">
+<link rel="apple-touch-icon" sizes="180x180" href="<?= asset('img/apple-touch-icon.png') ?>">
+<link rel="apple-touch-icon" href="<?= asset('img/apple-touch-icon.png') ?>">
+<link rel="mask-icon" href="<?= asset('img/icon-512x512.png') ?>" color="#6C63FF">
+
 <!-- ⚡ PWA: manifest for installable app -->
 <link rel="manifest" href="<?= asset('manifest.json') ?>">
 
