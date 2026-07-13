@@ -27,10 +27,8 @@ if [ -f /var/www/html/.env ]; then
 fi
 
 # ⚡ Performance: clear OPcache after deploy so the new code is recompiled.
-# The opcache.revalidate_freq=60 in our config means cached PHP files can
-# stay stale for up to 60s after deploy — calling opcache_reset() at container
-# start guarantees fresh code is loaded.
-php -r 'if (function_exists("opcache_reset")) opcache_reset();' 2>/dev/null || true
+# (skipped because opcache.validate_timestamps=0 means files are cached forever
+# until container restart — which IS the deploy mechanism on Coolify)
 
 echo ">>> Starting Apache ($@) on port ${PORT}"
 exec "$@"
