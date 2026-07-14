@@ -1,5 +1,6 @@
 <?php /** Doctor: patient profile */
 $age = $patient['birth_date'] ? date('Y') - date('Y', strtotime($patient['birth_date'])) : '-';
+$isPrintMode = isset($_GET['print']);
 ?>
 <div class="page-header">
     <div>
@@ -7,7 +8,10 @@ $age = $patient['birth_date'] ? date('Y') - date('Y', strtotime($patient['birth_
         <div class="page-subtitle"><?= e($patient['full_name']) ?> — <span class="uid-code"><?= e($patient['unique_id']) ?></span></div>
     </div>
     <div class="d-flex gap-1">
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="bi bi-printer"></i> طباعة</button>
+        <?php if (!$isPrintMode): ?>
         <a href="<?= url('/doctor/patients/' . $patient['id'] . '/order-test') ?>" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> طلب تحليل</a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -30,7 +34,7 @@ $age = $patient['birth_date'] ? date('Y') - date('Y', strtotime($patient['birth_
         </div>
 
         <!-- Refer patient -->
-        <div class="card mt-3">
+        <div class="card mt-3 <?= $isPrintMode ? 'no-print' : '' ?>">
             <div class="card-header"><i class="bi bi-arrow-left-right text-pink"></i> إحالة لطبيب آخر</div>
             <div class="card-body">
                 <form method="post" action="<?= url('/doctor/patients/' . $patient['id'] . '/refer') ?>">
@@ -109,7 +113,7 @@ $age = $patient['birth_date'] ? date('Y') - date('Y', strtotime($patient['birth_
 
         <!-- Referrals -->
         <?php if (!empty($referrals)): ?>
-        <div class="card">
+        <div class="card <?= $isPrintMode ? 'no-print' : '' ?>">
             <div class="card-header"><i class="bi bi-arrow-left-right text-pink"></i> الإحالات</div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0">

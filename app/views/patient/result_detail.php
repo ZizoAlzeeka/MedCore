@@ -42,10 +42,9 @@
 </div>
 
 <div class="no-print">
-    <button class="btn btn-primary" onclick="printToPDF('reportSection', 'تقرير-تحاليل-<?= e($order['patient_uid']) ?>.pdf')">
-        <i class="bi bi-printer"></i> طباعة / تحميل PDF
+    <button class="btn btn-primary" onclick="window.print()">
+        <i class="bi bi-printer"></i> طباعة / حفظ PDF
     </button>
-    <a href="<?= url('/patient/results') ?>" class="btn btn-secondary">رجوع للقائمة</a>
+    <a href="<?= url('/patient/results') ?>" class="btn btn-secondary spa-link" data-spa="1">رجوع للقائمة</a>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>

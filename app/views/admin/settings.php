@@ -26,18 +26,3 @@
     </div>
 </div>
 
-<div class="card mt-3">
-    <div class="card-header"><i class="bi bi-info-circle text-purple"></i> معلومات النظام</div>
-    <div class="card-body">
-        <table class="table table-sm">
-            <tr><td>إصدار النظام</td><td>1.0.0</td></tr>
-            <tr><td>التقنية</td><td>PHP + MySQL (MVC بدون إطار عمل)</td></tr>
-            <tr><td>معيار التحاليل</td><td>LOINC</td></tr>
-            <tr><td>الخط</td><td>Cairo</td></tr>
-            <tr><td>الإطار</td><td>Bootstrap 5 RTL</td></tr>
-            <tr><td>التنبيهات</td><td>SweetAlert2</td></tr>
-            <tr><td>محرر النصوص</td><td>Quill</td></tr>
-            <tr><td>طباعة PDF</td><td>html2pdf.js</td></tr>
-        </table>
-    </div>
-</div>

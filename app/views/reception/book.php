@@ -119,29 +119,54 @@
 </div>
 
 <script>
-// Patient search
-let timer;
-document.getElementById('patientSearch').addEventListener('input', function() {
-    clearTimeout(timer);
-    const q = this.value.trim();
-    if (q.length < 2) { document.getElementById('patientResults').innerHTML = ''; return; }
-    timer = setTimeout(() => {
-        fetch(`/reception/search-patient?q=${encodeURIComponent(q)}`)
-            .then(r => r.json())
-            .then(data => {
-                const c = document.getElementById('patientResults');
-                if (!data.patients || data.patients.length === 0) {
-                    c.innerHTML = '<div class="small text-muted p-2">لا نتائج — سجّل مريضاً جديداً</div>';
-                    return;
-                }
-                c.innerHTML = data.patients.map(p => `
-                    <div class="border rounded p-2 mb-1 cursor-pointer" onclick="selectPatient(${p.id}, '${escapeHtml(p.full_name)}', '${p.unique_id}', '${p.phone}')">
-                        <strong>${p.full_name}</strong> <span class="uid-code">${p.unique_id}</span> — ${p.phone}
-                    </div>
-                `).join('');
-            });
-    }, 300);
-});
+// Patient search — robust: re-attaches listener on every page load (incl. SPA navigation)
+// and resets previous selection state when the user starts a new search.
+let patientSearchTimer = null;
+
+function initPatientSearch() {
+    var input = document.getElementById('patientSearch');
+    if (!input) return;
+    // Avoid double-binding if already attached
+    if (input.getAttribute('data-search-bound') === '1') return;
+    input.setAttribute('data-search-bound', '1');
+
+    input.addEventListener('input', function() {
+        // ⚡ Reset previously selected patient state — this is the key fix:
+        // when the user starts typing again after a previous selection, clear
+        // the hidden patient_id and the info box so stale data isn't submitted.
+        if (document.getElementById('patient_id').value !== '') {
+            document.getElementById('patient_id').value = '';
+            var info = document.getElementById('patientInfo');
+            if (info) info.innerHTML = '';
+        }
+
+        clearTimeout(patientSearchTimer);
+        const q = this.value.trim();
+        if (q.length < 2) {
+            document.getElementById('patientResults').innerHTML = '';
+            return;
+        }
+        patientSearchTimer = setTimeout(() => {
+            fetch(`/reception/search-patient?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const c = document.getElementById('patientResults');
+                    if (!data.patients || data.patients.length === 0) {
+                        c.innerHTML = '<div class="small text-muted p-2">لا نتائج — سجّل مريضاً جديداً</div>';
+                        return;
+                    }
+                    c.innerHTML = data.patients.map(p => `
+                        <div class="border rounded p-2 mb-1 cursor-pointer" onclick="selectPatient(${p.id}, '${escapeHtml(p.full_name)}', '${p.unique_id}', '${p.phone}')">
+                            <strong>${p.full_name}</strong> <span class="uid-code">${p.unique_id}</span> — ${p.phone}
+                        </div>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('patientResults').innerHTML = '<div class="small text-danger p-2">خطأ في البحث — حاول مجدداً</div>';
+                });
+        }, 300);
+    });
+}
 
 function selectPatient(id, name, uid, phone) {
     document.getElementById('patient_id').value = id;
@@ -151,22 +176,28 @@ function selectPatient(id, name, uid, phone) {
 }
 
 // Department → doctors
-document.getElementById('deptSelect').addEventListener('change', function() {
-    const deptId = this.value;
-    const doctorSelect = document.getElementById('doctorSelect');
-    doctorSelect.innerHTML = '<option value="">جاري التحميل...</option>';
-    doctorSelect.disabled = true;
-    if (!deptId) { doctorSelect.innerHTML = '<option value="">اختر القسم أولاً</option>'; return; }
-    fetch(`/ajax/doctors/by-department?department_id=${deptId}`)
-        .then(r => r.json())
-        .then(data => {
-            doctorSelect.innerHTML = '<option value="">— اختر الطبيب —</option>';
-            data.doctors.forEach(d => {
-                doctorSelect.innerHTML += `<option value="${d.id}">${d.full_name} ${d.specialty ? '('+d.specialty+')' : ''}</option>`;
+function initDeptDoctors() {
+    var deptSelect = document.getElementById('deptSelect');
+    if (!deptSelect || deptSelect.getAttribute('data-bound') === '1') return;
+    deptSelect.setAttribute('data-bound', '1');
+
+    deptSelect.addEventListener('change', function() {
+        const deptId = this.value;
+        const doctorSelect = document.getElementById('doctorSelect');
+        doctorSelect.innerHTML = '<option value="">جاري التحميل...</option>';
+        doctorSelect.disabled = true;
+        if (!deptId) { doctorSelect.innerHTML = '<option value="">اختر القسم أولاً</option>'; return; }
+        fetch(`/ajax/doctors/by-department?department_id=${deptId}`)
+            .then(r => r.json())
+            .then(data => {
+                doctorSelect.innerHTML = '<option value="">— اختر الطبيب —</option>';
+                data.doctors.forEach(d => {
+                    doctorSelect.innerHTML += `<option value="${d.id}">${d.full_name} ${d.specialty ? '('+d.specialty+')' : ''}</option>`;
+                });
+                doctorSelect.disabled = false;
             });
-            doctorSelect.disabled = false;
-        });
-});
+    });
+}
 
 // Doctor + date → available slots
 function loadSlots() {
@@ -200,10 +231,35 @@ function loadSlots() {
             slotSelect.disabled = false;
         });
 }
-document.getElementById('doctorSelect').addEventListener('change', loadSlots);
-document.getElementById('apptDate').addEventListener('change', loadSlots);
+
+function initSlotListeners() {
+    var doctorSelect = document.getElementById('doctorSelect');
+    var apptDate = document.getElementById('apptDate');
+    if (doctorSelect && doctorSelect.getAttribute('data-bound') !== '1') {
+        doctorSelect.setAttribute('data-bound', '1');
+        doctorSelect.addEventListener('change', loadSlots);
+    }
+    if (apptDate && apptDate.getAttribute('data-bound') !== '1') {
+        apptDate.setAttribute('data-bound', '1');
+        apptDate.addEventListener('change', loadSlots);
+    }
+}
 
 function escapeHtml(str) {
     return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
+
+function initBookPage() {
+    initPatientSearch();
+    initDeptDoctors();
+    initSlotListeners();
+}
+
+// Run on initial load + re-run on SPA navigation
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBookPage);
+} else {
+    initBookPage();
+}
+document.addEventListener('spa:navigated', initBookPage);
 </script>

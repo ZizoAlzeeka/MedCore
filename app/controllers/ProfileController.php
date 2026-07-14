@@ -71,11 +71,11 @@ class ProfileController extends Controller
                         [$doctorId, $doctorId, $doctorId, $doctorId, $doctorId]
                     );
                     $workSummary = [
-                        'total_orders' => (int) $counts['total_orders'],
-                        'patients_count' => (int) $counts['patients_count'],
-                        'treatments_written' => (int) $counts['treatments_written'],
-                        'appointments_today' => (int) $counts['appointments_today'],
-                        'referrals_made' => (int) $counts['referrals_made'],
+                        'إجمالي الطلبات' => (int) $counts['total_orders'],
+                        'عدد المرضى' => (int) $counts['patients_count'],
+                        'خطط العلاج' => (int) $counts['treatments_written'],
+                        'مواعيد اليوم' => (int) $counts['appointments_today'],
+                        'الإحالات' => (int) $counts['referrals_made'],
                     ];
                 } elseif ($user['role'] === 'reception') {
                     $counts = Database::fetch(
@@ -86,8 +86,8 @@ class ProfileController extends Controller
                         [$userId]
                     );
                     $workSummary = [
-                        'booked_appointments' => (int) $counts['booked_appointments'],
-                        'registered_patients' => (int) $counts['registered_patients'],
+                        'مواعيد محجوزة' => (int) $counts['booked_appointments'],
+                        'مرضى مسجلون' => (int) $counts['registered_patients'],
                     ];
                 } elseif ($user['role'] === 'lab_tech') {
                     $counts = Database::fetch(
@@ -98,8 +98,8 @@ class ProfileController extends Controller
                         [$userId, $userId]
                     );
                     $workSummary = [
-                        'uploaded_results' => (int) $counts['uploaded_results'],
-                        'uploaded_today' => (int) $counts['uploaded_today'],
+                        'نتائج مرفوعة' => (int) $counts['uploaded_results'],
+                        'مرفوعة اليوم' => (int) $counts['uploaded_today'],
                     ];
                 }
             }

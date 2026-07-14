@@ -46,12 +46,9 @@ class LabTechController extends Controller
 
     public function orders()
     {
-        $status = $_GET['status'] ?? 'ordered';
-        $valid = ['ordered', 'in_progress', 'result_uploaded', 'cancelled', 'duplicate_skipped'];
-        if (!in_array($status, $valid)) $status = 'ordered';
-
-        // ⚡ Cache lab orders for 15s per status
-        $cacheKey = 'labtech_orders_' . $status;
+        // ⚡ Fetch ALL orders — status filtering is now client-side.
+        // Results data is also fetched so the lab tech can view completed results.
+        $cacheKey = 'labtech_orders_all';
         $orders = null;
         if (function_exists('apcu_fetch')) {
             $orders = apcu_fetch($cacheKey);
@@ -60,23 +57,26 @@ class LabTechController extends Controller
             $orders = Database::fetchAll(
                 "SELECT o.*, t.name_ar, t.name_en, t.loinc_code, t.sample_type,
                         u.full_name AS patient_name, u.unique_id AS patient_uid, u.phone,
-                        doc_u.full_name AS doctor_name
+                        doc_u.full_name AS doctor_name,
+                        r.result_value, r.unit, r.normal_range, r.flag, r.performed_at, r.uploaded_at,
+                        r.notes AS result_notes, lt_u.full_name AS lab_tech_name
                  FROM test_orders o
                  JOIN tests_catalog t ON o.test_id = t.id
                  JOIN users u ON o.patient_id = u.id
                  LEFT JOIN doctors d ON o.doctor_id = d.id
                  LEFT JOIN users doc_u ON d.user_id = doc_u.id
-                 WHERE o.status = ?
-                 ORDER BY o.ordered_at " . ($status === 'ordered' ? 'ASC' : 'DESC'),
-                [$status]
+                 LEFT JOIN test_results r ON o.id = r.order_id
+                 LEFT JOIN users lt_u ON r.lab_tech_id = lt_u.id
+                 ORDER BY o.ordered_at DESC
+                 LIMIT 500"
             );
             if (function_exists('apcu_store')) {
                 apcu_store($cacheKey, $orders, 15);
             }
         }
 
-        $title = 'الطلبات — ' . statusLabel($status);
-        viewWithLayout('labtech/orders', compact('orders', 'status', 'title'));
+        $title = 'الطلبات الواردة';
+        viewWithLayout('labtech/orders', compact('orders', 'title'));
     }
 
     public function showUpload($id)

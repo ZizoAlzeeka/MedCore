@@ -72,25 +72,14 @@ class DoctorController extends Controller
 
     public function patients()
     {
-        $q = trim($_GET['q'] ?? '');
-        if ($q) {
-            $qq = "%$q%";
-            $patients = Database::fetchAll(
-                "SELECT DISTINCT u.* FROM users u
-                 JOIN test_orders o ON u.id = o.patient_id
-                 WHERE o.doctor_id = ? AND (u.full_name LIKE ? OR u.unique_id LIKE ? OR u.phone LIKE ?)
-                 ORDER BY u.full_name",
-                [$this->doctorId, $qq, $qq, $qq]
-            );
-        } else {
-            $patients = Database::fetchAll(
-                "SELECT DISTINCT u.* FROM users u
-                 JOIN test_orders o ON u.id = o.patient_id
-                 WHERE o.doctor_id = ?
-                 ORDER BY u.full_name",
-                [$this->doctorId]
-            );
-        }
+        // ⚡ Fetch ALL patients — filtering is now done client-side (live search)
+        $patients = Database::fetchAll(
+            "SELECT DISTINCT u.* FROM users u
+             JOIN test_orders o ON u.id = o.patient_id
+             WHERE o.doctor_id = ?
+             ORDER BY u.full_name",
+            [$this->doctorId]
+        );
         // Also include patients from referrals to me
         $referred = Database::fetchAll(
             "SELECT DISTINCT u.* FROM users u
@@ -100,7 +89,7 @@ class DoctorController extends Controller
             [$this->doctorId]
         );
         $title = 'مرضاي';
-        viewWithLayout('doctor/patients', compact('patients', 'referred', 'q', 'title'));
+        viewWithLayout('doctor/patients', compact('patients', 'referred', 'title'));
     }
 
     public function patientProfile($id)

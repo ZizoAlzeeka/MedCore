@@ -1,6 +1,12 @@
 <?php /** Admin: Reports */ ?>
 <div class="page-header">
-    <h2 class="page-title"><i class="bi bi-bar-chart-fill"></i> <?= e($title) ?></h2>
+    <div>
+        <h2 class="page-title"><i class="bi bi-bar-chart-fill"></i> <?= e($title) ?></h2>
+        <div class="page-subtitle">إحصائيات وتقارير شاملة — <?= formatDate(now()) ?></div>
+    </div>
+    <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+        <i class="bi bi-printer"></i> طباعة التقرير
+    </button>
 </div>
 
 <!-- Stats summary -->
