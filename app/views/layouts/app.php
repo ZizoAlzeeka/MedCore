@@ -21,21 +21,29 @@ if (!$isAjax) {
         $doctor = Database::fetch("SELECT d.*, dep.name_ar AS dept_name FROM doctors d LEFT JOIN departments dep ON d.department_id = dep.id WHERE d.user_id = ?", [Auth::id()]);
     }
 
-    // ⚡ Cache notification count in APCu for 15 seconds per user
-    $notifCacheKey = 'notif_count_' . Auth::id();
-    if (function_exists('apcu_fetch') && apcu_exists($notifCacheKey)) {
-        $notifCount = (int) apcu_fetch($notifCacheKey);
+    // ⚡ Cache notification count + recent notifs in APCu for 30 seconds.
+    // Remote MySQL has ~300ms latency — without cache, every page load
+    // waits 600ms+ for 2 notif queries. With cache, it's instant.
+    $notifCacheKey = 'notif_data_' . Auth::id();
+    $notifCached = null;
+    if (function_exists('apcu_fetch')) {
+        $notifCached = apcu_fetch($notifCacheKey);
+    }
+    if ($notifCached !== false && $notifCached !== null) {
+        $notifCount = (int) $notifCached['count'];
+        $recentNotifs = $notifCached['recent'];
     } else {
         try {
             $notifCount = (int) Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
+            $recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
             if (function_exists('apcu_store')) {
-                apcu_store($notifCacheKey, $notifCount, 15);
+                apcu_store($notifCacheKey, ['count' => $notifCount, 'recent' => $recentNotifs], 30);
             }
         } catch (Throwable $e) {
             $notifCount = 0;
+            $recentNotifs = [];
         }
     }
-    $recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
 }
 
 // Sidebar menu per role
@@ -51,7 +59,6 @@ switch ($role) {
             ['label' => 'كتالوج التحاليل', 'url' => '/admin/tests', 'icon' => 'bi-clipboard2-pulse'],
             ['label' => 'التقارير', 'url' => '/admin/reports', 'icon' => 'bi-bar-chart'],
             ['label' => 'الإعدادات', 'url' => '/admin/settings', 'icon' => 'bi-gear'],
-            ['label' => 'سجل الأخطاء', 'url' => '/admin/logs', 'icon' => 'bi-bug'],
         ];
         break;
     case 'doctor':
@@ -273,18 +280,6 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 
         <!-- Main content (loads dynamically via AJAX) -->
         <main class="main-content" id="main-content">
-            <?php if (hasFlash('success')): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="bi bi-check-circle"></i> <?= e(getFlash('success')) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
-            <?php if (hasFlash('error')): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="bi bi-exclamation-circle"></i> <?= e(getFlash('error')) ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            <?php endif; ?>
             <?= $view ?>
         </main>
 
@@ -302,10 +297,38 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 <script src="<?= asset('js/app.js') ?>" defer></script>
 <?php if (isset($extraScripts)) echo $extraScripts; ?>
 
-<a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
-    <i class="bi bi-download"></i>
-    <span>تحميل السجلات</span>
-</a>
+<!-- ⚡ SweetAlert2 toast notifications for flash messages -->
+<?php
+$flashSuccess = getFlash('success');
+$flashError = getFlash('error');
+?>
+<?php if ($flashSuccess || $flashError): ?>
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    if (typeof Swal !== 'undefined') {
+        var config = {
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            didOpen: function(toast) {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        };
+        <?php if ($flashSuccess): ?>
+        config.icon = 'success';
+        config.title = <?= json_encode($flashSuccess, JSON_UNESCAPED_UNICODE) ?>;
+        <?php elseif ($flashError): ?>
+        config.icon = 'error';
+        config.title = <?= json_encode($flashError, JSON_UNESCAPED_UNICODE) ?>;
+        <?php endif; ?>
+        Swal.fire(config);
+    }
+});
+</script>
+<?php endif; ?>
 
 <!-- ⚡ Connection status indicator -->
 <div class="conn-status" id="conn-status">

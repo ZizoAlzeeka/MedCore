@@ -5,7 +5,6 @@
  */
 $router = new Router();
 
-// ===== Public: download full logs / server diagnostics as txt =====
 // ===== Health check endpoint (used by Coolify/Render) — lightweight, NO DB =====
 // Returns 200 + JSON {ok:true} immediately. Avoids triggering DB connection
 // (which can be slow on cold starts) for health check pings.
@@ -55,76 +54,6 @@ $router->add('GET', '/perf', function () {
     exit;
 });
 
-// ===== Public: download full logs / server diagnostics as txt =====
-$router->add('GET', '/download-logs', function () {
-    $sections = [];
-
-    // Section A: diagnostic snapshot (server, env, db, session, extensions)
-    try {
-        $sections[] = Logger::diagnosticSnapshot();
-    } catch (Throwable $e) {
-        $sections[] = "[diagnostic snapshot error] " . $e->getMessage();
-    }
-
-    // Section B: full contents of every log file
-    $sections[] = '';
-    $sections[] = str_repeat('#', 78);
-    $sections[] = '##### FULL LOG FILES CONTENT #####';
-    $sections[] = str_repeat('#', 78);
-
-    $logFiles = Logger::allFiles();
-    if (empty($logFiles)) {
-        $sections[] = '(no log files exist yet — request logging will create them)';
-    } else {
-        foreach ($logFiles as $f) {
-            $sections[] = '';
-            $sections[] = str_repeat('-', 78);
-            $sections[] = '### FILE: ' . basename($f)
-                . '  |  size: ' . filesize($f) . ' bytes'
-                . '  |  modified: ' . date('Y-m-d H:i:s', filemtime($f));
-            $sections[] = str_repeat('-', 78);
-            $content = @file_get_contents($f);
-            $sections[] = ($content !== false && $content !== '') ? $content : '(empty or unreadable)';
-        }
-    }
-
-    // Section C: tail of today's log even if just generated
-    $todayFile = Logger::logDir() . '/app-' . date('Y-m-d') . '.log';
-    $sections[] = '';
-    $sections[] = str_repeat('#', 78);
-    $sections[] = '##### TODAY LOG TAIL (' . basename($todayFile) . ') #####';
-    $sections[] = str_repeat('#', 78);
-    if (is_file($todayFile) && is_readable($todayFile)) {
-        $tail = @file_get_contents($todayFile);
-        $sections[] = $tail ?: '(empty)';
-    } else {
-        $sections[] = '(today log does not exist yet)';
-    }
-
-    $sections[] = '';
-    $sections[] = str_repeat('=', 78);
-    $sections[] = 'End of report — ' . date('Y-m-d H:i:s');
-    $sections[] = str_repeat('=', 78);
-
-    $content = implode("\n", $sections);
-
-    // Log that someone downloaded the logs (audit)
-    Logger::audit('downloaded-logs', Auth::id() ?: 0, [
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-        'ua' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-    ]);
-
-    $filename = 'medcore-logs-' . date('Y-m-d_His') . '.txt';
-    header('Content-Type: text/plain; charset=utf-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . strlen($content));
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    echo $content;
-    exit;
-});
-
 // ===== Auth routes (public) =====
 $router->add('GET',  '/login',  'AuthController@showLogin');
 $router->add('POST', '/login',  'AuthController@login');
@@ -151,7 +80,6 @@ $router->add('POST', '/admin/tests/{id}/delete', 'AdminController@deleteTest');
 $router->add('GET',  '/admin/reports', 'AdminController@reports');
 $router->add('GET',  '/admin/settings', 'AdminController@settings');
 $router->add('POST', '/admin/settings', 'AdminController@updateSettings');
-$router->add('GET',  '/admin/logs', 'AdminController@logs');
 
 // ===== Doctor routes =====
 $router->add('GET',  '/doctor', 'DoctorController@dashboard');

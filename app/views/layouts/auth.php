@@ -63,9 +63,37 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
 <script src="<?= asset('js/app.js') ?>" defer></script>
 
-<a href="<?= url('/download-logs') ?>" class="floating-logs-btn" title="تحميل سجلات النظام والأخطاء" download>
-    <i class="bi bi-download"></i>
-    <span>تحميل السجلات</span>
-</a>
+<!-- ⚡ SweetAlert2 toast notifications for flash messages -->
+<?php
+$flashSuccess = getFlash('success');
+$flashError = getFlash('error');
+?>
+<?php if ($flashSuccess || $flashError): ?>
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+    if (typeof Swal !== 'undefined') {
+        var config = {
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true,
+            didOpen: function(toast) {
+                toast.addEventListener('mouseenter', Swal.stopTimer);
+                toast.addEventListener('mouseleave', Swal.resumeTimer);
+            }
+        };
+        <?php if ($flashSuccess): ?>
+        config.icon = 'success';
+        config.title = <?= json_encode($flashSuccess, JSON_UNESCAPED_UNICODE) ?>;
+        <?php elseif ($flashError): ?>
+        config.icon = 'error';
+        config.title = <?= json_encode($flashError, JSON_UNESCAPED_UNICODE) ?>;
+        <?php endif; ?>
+        Swal.fire(config);
+    }
+});
+</script>
+<?php endif; ?>
 </body>
 </html>

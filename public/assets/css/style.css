@@ -1091,3 +1091,89 @@ body {
 .table-responsive::-webkit-scrollbar {
     height: 6px;
 }
+
+/* ============================================================
+   ⚡ Auth forms — compact elegant design
+   ============================================================ */
+.auth-form-header h5 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.auth-form-header p {
+    font-size: 12.5px;
+    margin-bottom: 0;
+}
+.auth-form {
+    margin-top: 18px;
+}
+.auth-field {
+    margin-bottom: 12px;
+}
+.auth-field .form-label {
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.auth-field .form-control,
+.auth-field .form-select {
+    font-size: 13px;
+    padding: 7px 10px;
+    height: auto;
+}
+.auth-field .input-group-text {
+    font-size: 13px;
+    padding: 7px 10px;
+}
+.auth-row {
+    display: flex;
+    gap: 10px;
+}
+.auth-row .auth-field {
+    flex: 1;
+}
+.auth-submit-btn {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 9px 20px;
+    margin-top: 6px;
+    border-radius: 10px;
+}
+.auth-footer {
+    text-align: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #eee;
+    font-size: 12.5px;
+}
+.auth-demo-creds {
+    margin-top: 16px;
+    padding: 10px 12px;
+    background: #f8f9ff;
+    border-radius: 8px;
+    font-size: 11px;
+    border: 1px solid #e8ecf5;
+}
+.auth-demo-creds strong {
+    font-size: 11px;
+    display: block;
+    margin-bottom: 6px;
+}
+.creds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.cred-item {
+    font-size: 10.5px;
+    color: #636E72;
+}
+.cred-item code {
+    font-size: 10px;
+    color: var(--primary-purple);
+}
+@media (max-width: 480px) {
+    .auth-row {
+        flex-direction: column;
+    }
+}
