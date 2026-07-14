@@ -1636,3 +1636,162 @@ body.modal-open .conn-status {
 
 /* Schedule date rows */
 .date-row { animation: fadeInUp 0.2s ease-out; }
+
+/* ============================================================
+   ⚡ MedCore Calendar Component
+   ============================================================ */
+.medcal {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+.medcal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #0d9488, #0891b2);
+    color: #fff;
+}
+.medcal-title {
+    font-size: 18px;
+    font-weight: 800;
+}
+.medcal-nav-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.medcal-nav-btn:hover {
+    background: rgba(255,255,255,0.3);
+}
+.medcal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    padding: 12px;
+}
+.medcal-day-name {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #636E72;
+    padding: 8px 4px;
+    text-transform: uppercase;
+}
+.medcal-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3436;
+    min-height: 50px;
+}
+.medcal-day:hover:not(.empty):not(.past) {
+    background: rgba(13,148,136,0.08);
+    transform: scale(1.05);
+}
+.medcal-day.empty {
+    cursor: default;
+}
+.medcal-day.past {
+    color: #b2bec3;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.medcal-day.today {
+    background: rgba(13,148,136,0.1);
+    border: 2px solid #0d9488;
+    color: #0d9488;
+}
+.medcal-day.selected {
+    background: linear-gradient(135deg, #0d9488, #0891b2);
+    color: #fff;
+    border-color: transparent;
+}
+.medcal-day.has-data {
+    background: rgba(52,211,153,0.15);
+}
+.medcal-day.has-data.selected {
+    background: linear-gradient(135deg, #0d9488, #0891b2);
+}
+.medcal-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: #34d399;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.medcal-day.selected .medcal-badge {
+    background: rgba(255,255,255,0.3);
+}
+
+/* Calendar day detail modal */
+.cal-day-modal-content {
+    text-align: center;
+}
+.cal-day-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+}
+.cal-day-slot {
+    background: linear-gradient(135deg, #f0fdfa, #ecfeff);
+    border: 1px solid #a7f3d0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 100px;
+}
+.cal-day-slot:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(13,148,136,0.2);
+}
+.cal-day-slot.booked {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.cal-day-slot-time {
+    font-size: 15px;
+    font-weight: 700;
+    color: #0d9488;
+}
+.cal-day-slot-label {
+    font-size: 11px;
+    color: #636E72;
+    margin-top: 2px;
+}
+.cal-day-slot.booked .cal-day-slot-time {
+    color: #dc2626;
+}
