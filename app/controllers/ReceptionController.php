@@ -8,23 +8,48 @@ class ReceptionController extends Controller
 
     public function dashboard()
     {
-        $stats = [
-            'appointments_today' => (new Appointment())->countToday(),
-            'total_patients' => (int) Database::fetchColumn("SELECT COUNT(*) FROM users WHERE role='patient'"),
-            'total_doctors' => (int) Database::fetchColumn("SELECT COUNT(*) FROM doctors"),
-            'departments' => (int) Database::fetchColumn("SELECT COUNT(*) FROM departments"),
-        ];
-        $todayAppts = Database::fetchAll(
-            "SELECT a.*, u.full_name AS patient_name, u.unique_id AS patient_uid, u.phone,
-                    doc_u.full_name AS doctor_name, dep.name_ar AS dept_name
-             FROM appointments a
-             JOIN users u ON a.patient_id = u.id
-             LEFT JOIN doctors d ON a.doctor_id = d.id
-             LEFT JOIN users doc_u ON d.user_id = doc_u.id
-             LEFT JOIN departments dep ON d.department_id = dep.id
-             WHERE DATE(a.appt_date) = CURDATE()
-             ORDER BY a.appt_date ASC LIMIT 20"
-        );
+        // ⚡ Cache dashboard data in APCu for 30s
+        $cacheKey = 'reception_dash';
+        $cached = null;
+        if (function_exists('apcu_fetch')) {
+            $cached = apcu_fetch($cacheKey);
+        }
+
+        if ($cached === false || $cached === null) {
+            $counts = Database::fetch(
+                "SELECT
+                    (SELECT COUNT(*) FROM appointments WHERE DATE(appt_date) = CURDATE() AND status='booked') AS appointments_today,
+                    (SELECT COUNT(*) FROM users WHERE role='patient') AS total_patients,
+                    (SELECT COUNT(*) FROM doctors) AS total_doctors,
+                    (SELECT COUNT(*) FROM departments) AS departments
+                "
+            );
+            $todayAppts = Database::fetchAll(
+                "SELECT a.*, u.full_name AS patient_name, u.unique_id AS patient_uid, u.phone,
+                        doc_u.full_name AS doctor_name, dep.name_ar AS dept_name
+                 FROM appointments a
+                 JOIN users u ON a.patient_id = u.id
+                 LEFT JOIN doctors d ON a.doctor_id = d.id
+                 LEFT JOIN users doc_u ON d.user_id = doc_u.id
+                 LEFT JOIN departments dep ON d.department_id = dep.id
+                 WHERE DATE(a.appt_date) = CURDATE()
+                 ORDER BY a.appt_date ASC LIMIT 20"
+            );
+            $cached = [
+                'stats' => [
+                    'appointments_today' => (int) $counts['appointments_today'],
+                    'total_patients' => (int) $counts['total_patients'],
+                    'total_doctors' => (int) $counts['total_doctors'],
+                    'departments' => (int) $counts['departments'],
+                ],
+                'todayAppts' => $todayAppts,
+            ];
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $cached, 30);
+            }
+        }
+
+        extract($cached);
         $title = 'لوحة الاستقبال';
         viewWithLayout('reception/dashboard', compact('stats', 'todayAppts', 'title'));
     }

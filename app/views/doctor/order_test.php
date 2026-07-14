@@ -1,10 +1,10 @@
-<?php /** Doctor: order new test with duplicate detection */ ?>
+<?php /** Doctor: order new test with duplicate detection + ICD-10 suggestions */ ?>
 <div class="page-header">
     <div>
         <h2 class="page-title"><i class="bi bi-clipboard2-plus"></i> <?= e($title) ?></h2>
         <div class="page-subtitle">المريض: <strong><?= e($patient['full_name']) ?></strong> — <span class="uid-code"><?= e($patient['unique_id']) ?></span></div>
     </div>
-    <a href="<?= url('/doctor/patients/' . $patient['id']) ?>" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-right"></i> رجوع</a>
+    <a href="<?= url('/doctor/patients/' . $patient['id']) ?>" class="btn btn-secondary btn-sm spa-link" data-spa="1" data-url="<?= url('/doctor/patients/' . $patient['id']) ?>"><i class="bi bi-arrow-right"></i> رجوع</a>
 </div>
 
 <!-- Search catalog -->
@@ -38,7 +38,10 @@
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">التشخيص المبدئي (ICD-10) <span class="text-muted">(اختياري)</span></label>
-                    <input type="text" name="diagnosis_icd" class="form-control" placeholder="مثال: R10 (ألم بطني)">
+                    <div style="position:relative;">
+                        <input type="text" name="diagnosis_icd" id="icdInput" class="form-control" placeholder="ابحث: ألم بطني، سكري،..." autocomplete="off">
+                        <div id="icdSuggestions" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:1050;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #e0e0e8;border-radius:0 0 10px 10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">ملاحظات</label>
@@ -62,7 +65,7 @@
     <div class="card-header"><i class="bi bi-clock-history text-purple"></i> آخر تحاليل المريض</div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm mb-0">
+            <table class="table table-sm mb-0 medcore-table">
                 <thead><tr><th>التحليل</th><th>الحالة</th><th>النتيجة</th><th>التاريخ</th></tr></thead>
                 <tbody>
                     <?php foreach ($recentOrders as $o): ?>
@@ -86,6 +89,7 @@
 const patientId = <?= $patient['id'] ?>;
 let searchTimer = null;
 
+// ⚡ Live search for tests — reduced debounce from 300ms to 200ms
 document.getElementById('testSearch').addEventListener('input', function() {
     clearTimeout(searchTimer);
     const q = this.value.trim();
@@ -102,28 +106,29 @@ document.getElementById('testSearch').addEventListener('input', function() {
                     container.innerHTML = '<div class="text-muted text-center py-3"><i class="bi bi-info-circle"></i> لا نتائج</div>';
                     return;
                 }
-                container.innerHTML = data.tests.map(t => `
-                    <div class="border rounded p-2 mb-1 cursor-pointer test-item" onclick="selectTest(${t.id}, '${escapeHtml(t.loinc_code)}', '${escapeHtml(t.name_ar)}', '${escapeHtml(t.name_en || '')}', '${escapeHtml(t.sample_type || '')}')">
-                        <span class="loinc-code">${t.loinc_code}</span>
-                        <strong>${t.name_ar}</strong>
-                        <span class="text-muted small">${t.name_en || ''}</span>
-                        <span class="badge bg-info">${t.category || ''}</span>
-                    </div>
-                `).join('');
+                container.innerHTML = data.tests.map(t => {
+                    var safe = JSON.stringify(t).replace(/'/g, "\\'");
+                    return `<div class="border rounded p-2 mb-1 cursor-pointer test-item" onclick="selectTest(${safe})">
+                        <span class="loinc-code">${t.loinc_code||''}</span>
+                        <strong>${t.name_ar||''}</strong>
+                        <span class="text-muted small">${t.name_en||''}</span>
+                        ${t.category ? '<span class="badge bg-info">'+t.category+'</span>' : ''}
+                    </div>`;
+                }).join('');
             });
-    }, 300);
+    }, 200);
 });
 
-function selectTest(id, code, nameAr, nameEn, sample) {
-    document.getElementById('test_id').value = id;
-    document.getElementById('testInfo').innerHTML = `<span class="loinc-code">${code}</span> <strong>${nameAr}</strong> (${nameEn}) — عينة: ${sample}`;
+function selectTest(t) {
+    document.getElementById('test_id').value = t.id;
+    document.getElementById('testInfo').innerHTML = `<span class="loinc-code">${t.loinc_code||''}</span> <strong>${t.name_ar||''}</strong> (${t.name_en||''}) — عينة: ${t.sample_type||'-'}`;
     document.getElementById('orderForm').style.display = 'block';
     document.getElementById('duplicateAlert').innerHTML = '';
     document.getElementById('usePrevBtn').style.display = 'none';
     document.getElementById('decision').value = 'proceed';
 
     // Check duplicate
-    fetch(`/ajax/check-duplicate?patient_id=${patientId}&test_id=${id}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+    fetch(`/ajax/check-duplicate?patient_id=${patientId}&test_id=${t.id}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(r => r.json())
         .then(data => {
             if (data.duplicate) {
@@ -145,7 +150,62 @@ function selectTest(id, code, nameAr, nameEn, sample) {
         });
 }
 
-function escapeHtml(str) {
-    return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+// ⚡ ICD-10 live suggestions
+var icdData = [
+    {code:'R10', label:'ألم بطني'},
+    {code:'R51', label:'صداع'},
+    {code:'E11.9', label:'سكري من النوع 2'},
+    {code:'I10', label:'ارتفاع ضغط الدم'},
+    {code:'J00', label:'زكام حاد'},
+    {code:'J45.9', label:'ربو'},
+    {code:'K21.9', label:'ارتجاع المريء'},
+    {code:'K76.9', label:'مرض كبدي'},
+    {code:'N17.9', label:'فشل كلوي حاد'},
+    {code:'N39.0', label:'التهاب مسالك بولية'},
+    {code:'M54.5', label:'ألم أسفل الظهر'},
+    {code:'M25.5', label:'ألم في المفصل'},
+    {code:'D50.9', label:'فقر دم'},
+    {code:'E78.5', label:'ارتفاع الكوليسترول'},
+    {code:'E03.9', label:'قصور الغدة الدرقية'},
+    {code:'E05.9', label:'فرط نشاط الغدة الدرقية'},
+    {code:'L20.9', label:'إكزيما'},
+    {code:'L30.9', label:'التهاب جلد'},
+    {code:'H10.9', label:'التهاب ملتحمة العين'},
+    {code:'H52.4', label:'ضعف النظر'},
+    {code:'F41.1', label:'قلق عام'},
+    {code:'F32.9', label:'اكتئاب'},
+    {code:'R42', label:'دوخة'},
+    {code:'R05', label:'سعال'},
+    {code:'R50.9', label:'حمى'},
+    {code:'R19.0', label:'ألم بطن علوي'},
+    {code:'K59.0', label:'إمساك'},
+    {code:'K52.9', label:'إسهال'},
+    {code:'I63.9', label:'سكتة دماغية'},
+    {code:'I50.9', label:'فشل قلبي'},
+];
+
+var icdInput = document.getElementById('icdInput');
+var icdSuggestions = document.getElementById('icdSuggestions');
+
+icdInput.addEventListener('input', function() {
+    var q = this.value.toLowerCase().trim();
+    if (q.length < 1) { icdSuggestions.style.display = 'none'; return; }
+    var matches = icdData.filter(function(item) {
+        return item.code.toLowerCase().includes(q) || item.label.toLowerCase().includes(q);
+    }).slice(0, 10);
+    if (matches.length === 0) { icdSuggestions.style.display = 'none'; return; }
+    icdSuggestions.innerHTML = matches.map(function(m) {
+        return '<div class="icd-suggestion" onclick="selectICD(\'' + m.code + '\')"><strong>' + m.code + '</strong> — ' + m.label + '</div>';
+    }).join('');
+    icdSuggestions.style.display = 'block';
+});
+
+icdInput.addEventListener('blur', function() {
+    setTimeout(function() { icdSuggestions.style.display = 'none'; }, 200);
+});
+
+function selectICD(code) {
+    icdInput.value = code;
+    icdSuggestions.style.display = 'none';
 }
 </script>

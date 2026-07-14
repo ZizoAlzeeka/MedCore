@@ -1564,3 +1564,40 @@ body.modal-open .conn-status {
     .auth-form-panel { padding: 20px; }
     .auth-modern-row { flex-direction: column; gap: 0; }
 }
+
+/* Department view modal — mini stats */
+.stat-mini {
+    text-align: center;
+    padding: 12px;
+    background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
+    border-radius: 12px;
+    border: 1px solid #e8ecf5;
+}
+.stat-mini-value {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--primary-purple);
+    line-height: 1;
+}
+.stat-mini-label {
+    font-size: 11px;
+    color: var(--gray-text);
+    margin-top: 4px;
+}
+
+/* ICD-10 suggestions dropdown */
+.icd-suggestion {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f5;
+    font-size: 12.5px;
+    transition: background 0.1s;
+}
+.icd-suggestion:hover {
+    background: rgba(108,99,255,0.06);
+}
+.icd-suggestion:last-child { border-bottom: none; }
+.icd-suggestion strong { color: var(--primary-purple); }
+
+/* Schedule date rows */
+.date-row { animation: fadeInUp 0.2s ease-out; }

@@ -58,7 +58,23 @@ $csrf = Auth::csrfToken();
     <div class="card-footer" id="deptPaginationBar"></div>
 </div>
 
-<!-- Modal -->
+<!-- View Department Modal -->
+<div class="modal fade" id="viewDeptModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-folder2-open text-purple"></i> تفاصيل القسم</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="viewDeptContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit/Add Modal -->
 <div class="modal fade" id="deptModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -131,6 +147,7 @@ function renderDeptTable() {
                 '<td class="small text-muted">' + desc + '</td>' +
                 '<td><span class="badge bg-primary">' + (d.doctors_count||0) + ' طبيب</span></td>' +
                 '<td><div class="d-flex gap-1">' +
+                '<button class="btn btn-sm btn-outline-info" onclick=\'viewDept(' + JSON.stringify(d) + ')\' title="عرض التفاصيل"><i class="bi bi-eye"></i></button>' +
                 '<button class="btn btn-sm btn-outline-primary" onclick=\'editDept(' + JSON.stringify(d) + ')\' title="تعديل"><i class="bi bi-pencil"></i></button>' +
                 '<form method="post" action="' + deleteUrl + '" style="display:inline" onsubmit="return confirm(\'تأكيد الحذف؟\')">' +
                 '<input type="hidden" name="csrf_token" value="' + csrf + '">' +
@@ -176,6 +193,48 @@ function editDept(d) {
     document.getElementById('dept_desc').value = d.description || '';
     document.getElementById('deptModalTitle').textContent = 'تعديل قسم';
     new bootstrap.Modal(document.getElementById('deptModal')).show();
+}
+
+function viewDept(d) {
+    var doctors = d.doctors || [];
+    var daysMap = {sat:'السبت',sun:'الأحد',mon:'الإثنين',tue:'الثلاثاء',wed:'الأربعاء',thu:'الخميس',fri:'الجمعة'};
+
+    var html = '<div class="text-center mb-3">' +
+        '<div style="width:64px;height:64px;margin:0 auto 12px;background:linear-gradient(135deg,#6C63FF,#9D4EDD);border-radius:16px;display:flex;align-items:center;justify-content:center;">' +
+        '<i class="bi bi-folder-fill text-white" style="font-size:28px;"></i></div>' +
+        '<h5 class="fw-bold mb-1">' + (d.name_ar||'') + '</h5>';
+    if (d.name_en) html += '<p class="text-muted small" dir="ltr">' + d.name_en + '</p>';
+    html += '</div>';
+
+    html += '<div class="row g-2 mb-3">';
+    html += '<div class="col-6"><div class="stat-mini"><div class="stat-mini-value">' + (d.doctors_count||0) + '</div><div class="stat-mini-label">أطباء</div></div></div>';
+    html += '<div class="col-6"><div class="stat-mini"><div class="stat-mini-value">' + (doctors.length||0) + '</div><div class="stat-mini-label">مسندون</div></div></div>';
+    html += '</div>';
+
+    if (d.description) {
+        html += '<div class="mb-3"><strong class="small text-muted">الوصف:</strong><p class="small mt-1">' + d.description + '</p></div>';
+    }
+
+    html += '<div><strong class="small text-purple"><i class="bi bi-people"></i> الأطباء في هذا القسم:</strong>';
+    if (doctors.length === 0) {
+        html += '<div class="text-muted text-center py-3 small"><i class="bi bi-info-circle"></i> لا أطباء مسندين لهذا القسم</div>';
+    } else {
+        html += '<div class="list-group mt-2">';
+        doctors.forEach(function(doc) {
+            var initials = (doc.full_name||'').charAt(0);
+            html += '<div class="list-group-item d-flex align-items-center gap-2">' +
+                '<div style="width:36px;height:36px;background:linear-gradient(135deg,#6C63FF,#FF6584);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;">' + initials + '</div>' +
+                '<div class="flex-grow-1">' +
+                '<div class="fw-bold small">' + (doc.full_name||'') + '</div>' +
+                (doc.specialty ? '<div class="text-muted" style="font-size:11px;"><i class="bi bi-stethoscope"></i> ' + doc.specialty + '</div>' : '') +
+                '</div></div>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+
+    document.getElementById('viewDeptContent').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('viewDeptModal')).show();
 }
 
 if (document.readyState === 'loading') {

@@ -6,26 +6,59 @@ class DoctorController extends Controller
     public function __construct()
     {
         Auth::requireRole('doctor');
-        $doc = Database::fetch("SELECT * FROM doctors WHERE user_id = ?", [Auth::id()]);
-        if (!$doc) { flash('error', 'بيانات الطبيب غير مكتملة'); redirect('/logout'); }
-        $this->doctorId = $doc['id'];
+        // ⚡ Cache doctor ID lookup in APCu (was querying DB on EVERY doctor page load)
+        $cacheKey = 'doctor_id_' . Auth::id();
+        $docId = null;
+        if (function_exists('apcu_fetch')) {
+            $docId = apcu_fetch($cacheKey);
+        }
+        if ($docId === false || $docId === null) {
+            $doc = Database::fetch("SELECT * FROM doctors WHERE user_id = ?", [Auth::id()]);
+            if (!$doc) { flash('error', 'بيانات الطبيب غير مكتملة'); redirect('/logout'); }
+            $docId = $doc['id'];
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $docId, 300);
+            }
+        }
+        $this->doctorId = $docId;
     }
 
     public function dashboard()
     {
-        $todayAppts = (new Appointment())->todayForDoctor($this->doctorId);
-        $totalPatients = (int) Database::fetchColumn(
-            "SELECT COUNT(DISTINCT patient_id) FROM test_orders WHERE doctor_id = ?", [$this->doctorId]
-        );
-        $pendingOrders = (int) Database::fetchColumn(
-            "SELECT COUNT(*) FROM test_orders WHERE doctor_id = ? AND status='ordered'", [$this->doctorId]
-        );
-        $uploadedToday = (int) Database::fetchColumn(
-            "SELECT COUNT(*) FROM test_orders o JOIN test_results r ON o.id = r.order_id
-             WHERE o.doctor_id = ? AND DATE(r.uploaded_at) = CURDATE()", [$this->doctorId]
-        );
-        $recentOrders = (new TestOrder())->forDoctor($this->doctorId);
-        $recentOrders = array_slice($recentOrders, 0, 8);
+        // ⚡ Cache dashboard data in APCu for 30s
+        $cacheKey = 'doctor_dash_' . $this->doctorId;
+        $cached = null;
+        if (function_exists('apcu_fetch')) {
+            $cached = apcu_fetch($cacheKey);
+        }
+
+        if ($cached === false || $cached === null) {
+            $todayAppts = (new Appointment())->todayForDoctor($this->doctorId);
+            // ⚡ Combine 3 count queries into 1
+            $counts = Database::fetch(
+                "SELECT
+                    (SELECT COUNT(DISTINCT patient_id) FROM test_orders WHERE doctor_id = ?) AS total_patients,
+                    (SELECT COUNT(*) FROM test_orders WHERE doctor_id = ? AND status='ordered') AS pending_orders,
+                    (SELECT COUNT(*) FROM test_orders o JOIN test_results r ON o.id = r.order_id WHERE o.doctor_id = ? AND DATE(r.uploaded_at) = CURDATE()) AS uploaded_today
+                ",
+                [$this->doctorId, $this->doctorId, $this->doctorId]
+            );
+            $recentOrders = (new TestOrder())->forDoctor($this->doctorId);
+            $recentOrders = array_slice($recentOrders, 0, 8);
+
+            $cached = [
+                'todayAppts' => $todayAppts,
+                'totalPatients' => (int) $counts['total_patients'],
+                'pendingOrders' => (int) $counts['pending_orders'],
+                'uploadedToday' => (int) $counts['uploaded_today'],
+                'recentOrders' => $recentOrders,
+            ];
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $cached, 30);
+            }
+        }
+
+        extract($cached);
         $title = 'لوحة تحكم الطبيب';
         viewWithLayout('doctor/dashboard', compact('todayAppts', 'totalPatients', 'pendingOrders', 'uploadedToday', 'recentOrders', 'title'));
     }
@@ -178,24 +211,38 @@ class DoctorController extends Controller
     public function storeSchedule()
     {
         Auth::csrfVerify();
-        $date = $_POST['work_date'];
         $start = $_POST['start_time'];
         $end = $_POST['end_time'];
         $duration = (int) ($_POST['slot_duration_min'] ?? 20);
-        if (!$date || !$start || !$end) { flash('error', 'بيانات ناقصة'); redirect('/doctor/schedule'); }
-        $dow = strtolower(date('D', strtotime($date)));
+        if (!$start || !$end) { flash('error', 'بيانات ناقصة'); redirect('/doctor/schedule'); }
+
+        // ⚡ Support multiple dates at once: dates[] array or single work_date
+        $dates = $_POST['dates'] ?? [];
+        if (!is_array($dates) || empty($dates)) {
+            $singleDate = $_POST['work_date'] ?? '';
+            if ($singleDate) $dates = [$singleDate];
+        }
+
+        if (empty($dates)) { flash('error', 'اختر تاريخاً واحداً على الأقل'); redirect('/doctor/schedule'); }
+
         $dowMap = ['Sat'=>'sat','Sun'=>'sun','Mon'=>'mon','Tue'=>'tue','Wed'=>'wed','Thu'=>'thu','Fri'=>'fri'];
-        $dow = $dowMap[$dow] ?? null;
-        Database::insert('doctor_schedules', [
-            'doctor_id' => $this->doctorId,
-            'work_date' => $date,
-            'day_of_week' => $dow,
-            'start_time' => $start,
-            'end_time' => $end,
-            'slot_duration_min' => $duration,
-            'is_available' => 1,
-        ]);
-        flash('success', 'تمت إضافة فترة دوام');
+        $added = 0;
+        foreach ($dates as $date) {
+            if (!$date) continue;
+            $dow = strtolower(date('D', strtotime($date)));
+            $dow = $dowMap[$dow] ?? null;
+            Database::insert('doctor_schedules', [
+                'doctor_id' => $this->doctorId,
+                'work_date' => $date,
+                'day_of_week' => $dow,
+                'start_time' => $start,
+                'end_time' => $end,
+                'slot_duration_min' => $duration,
+                'is_available' => 1,
+            ]);
+            $added++;
+        }
+        flash('success', "تمت إضافة $added فترة دوام بنجاح");
         redirect('/doctor/schedule');
     }
 

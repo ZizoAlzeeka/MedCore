@@ -8,13 +8,38 @@ class LabTechController extends Controller
 
     public function dashboard()
     {
-        $stats = [
-            'pending' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE status='ordered'"),
-            'uploaded_today' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_results WHERE DATE(uploaded_at)=CURDATE()"),
-            'uploaded_total' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_results"),
-        ];
-        $pending = (new TestOrder())->pendingForLab();
-        $pending = array_slice($pending, 0, 10);
+        // ⚡ Cache dashboard data in APCu for 30s
+        $cacheKey = 'labtech_dash';
+        $cached = null;
+        if (function_exists('apcu_fetch')) {
+            $cached = apcu_fetch($cacheKey);
+        }
+
+        if ($cached === false || $cached === null) {
+            $counts = Database::fetch(
+                "SELECT
+                    (SELECT COUNT(*) FROM test_orders WHERE status='ordered') AS pending,
+                    (SELECT COUNT(*) FROM test_results WHERE DATE(uploaded_at)=CURDATE()) AS uploaded_today,
+                    (SELECT COUNT(*) FROM test_results) AS uploaded_total
+                "
+            );
+            $pending = (new TestOrder())->pendingForLab();
+            $pending = array_slice($pending, 0, 10);
+
+            $cached = [
+                'stats' => [
+                    'pending' => (int) $counts['pending'],
+                    'uploaded_today' => (int) $counts['uploaded_today'],
+                    'uploaded_total' => (int) $counts['uploaded_total'],
+                ],
+                'pending' => $pending,
+            ];
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $cached, 30);
+            }
+        }
+
+        extract($cached);
         $title = 'لوحة فني المختبر';
         viewWithLayout('labtech/dashboard', compact('stats', 'pending', 'title'));
     }
@@ -25,19 +50,31 @@ class LabTechController extends Controller
         $valid = ['ordered', 'in_progress', 'result_uploaded', 'cancelled', 'duplicate_skipped'];
         if (!in_array($status, $valid)) $status = 'ordered';
 
-        $orders = Database::fetchAll(
-            "SELECT o.*, t.name_ar, t.name_en, t.loinc_code, t.sample_type,
-                    u.full_name AS patient_name, u.unique_id AS patient_uid, u.phone,
-                    doc_u.full_name AS doctor_name
-             FROM test_orders o
-             JOIN tests_catalog t ON o.test_id = t.id
-             JOIN users u ON o.patient_id = u.id
-             LEFT JOIN doctors d ON o.doctor_id = d.id
-             LEFT JOIN users doc_u ON d.user_id = doc_u.id
-             WHERE o.status = ?
-             ORDER BY o.ordered_at " . ($status === 'ordered' ? 'ASC' : 'DESC'),
-            [$status]
-        );
+        // ⚡ Cache lab orders for 15s per status
+        $cacheKey = 'labtech_orders_' . $status;
+        $orders = null;
+        if (function_exists('apcu_fetch')) {
+            $orders = apcu_fetch($cacheKey);
+        }
+        if ($orders === false || $orders === null) {
+            $orders = Database::fetchAll(
+                "SELECT o.*, t.name_ar, t.name_en, t.loinc_code, t.sample_type,
+                        u.full_name AS patient_name, u.unique_id AS patient_uid, u.phone,
+                        doc_u.full_name AS doctor_name
+                 FROM test_orders o
+                 JOIN tests_catalog t ON o.test_id = t.id
+                 JOIN users u ON o.patient_id = u.id
+                 LEFT JOIN doctors d ON o.doctor_id = d.id
+                 LEFT JOIN users doc_u ON d.user_id = doc_u.id
+                 WHERE o.status = ?
+                 ORDER BY o.ordered_at " . ($status === 'ordered' ? 'ASC' : 'DESC'),
+                [$status]
+            );
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $orders, 15);
+            }
+        }
+
         $title = 'الطلبات — ' . statusLabel($status);
         viewWithLayout('labtech/orders', compact('orders', 'status', 'title'));
     }
