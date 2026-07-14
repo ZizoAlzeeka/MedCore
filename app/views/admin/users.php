@@ -1,4 +1,4 @@
-<?php /** Admin: Users list — native HTML table + modal form + live search + pagination */
+<?php /** Admin: Users list — native HTML table + modal form + live search + numbered pagination */
 $csrf = Auth::csrfToken();
 $roleLabels = ['admin'=>'مدير','doctor'=>'طبيب','reception'=>'استقبال','lab_tech'=>'فني مختبر','patient'=>'مريض'];
 $roleBadgeClass = ['admin'=>'bg-danger','doctor'=>'bg-primary','reception'=>'bg-info','lab_tech'=>'bg-warning text-dark','patient'=>'bg-secondary'];
@@ -13,7 +13,6 @@ $roleBadgeClass = ['admin'=>'bg-danger','doctor'=>'bg-primary','reception'=>'bg-
     </button>
 </div>
 
-<!-- Live search + role filter + page size -->
 <div class="card mb-3">
     <div class="card-body">
         <div class="row g-2 align-items-end">
@@ -69,52 +68,7 @@ $roleBadgeClass = ['admin'=>'bg-danger','doctor'=>'bg-primary','reception'=>'bg-
                         <th style="width: 110px;">إجراءات</th>
                     </tr>
                 </thead>
-                <tbody id="usersTableBody">
-                    <?php foreach ($users as $i => $u):
-                        $editUrl = url('/admin/users/' . $u['id'] . '/edit');
-                        $toggleUrl = url('/admin/users/' . $u['id'] . '/toggle');
-                    ?>
-                    <tr data-name="<?= e(strtolower($u['full_name'])) ?>"
-                        data-email="<?= e(strtolower($u['email'])) ?>"
-                        data-uid="<?= e($u['unique_id']) ?>"
-                        data-phone="<?= e($u['phone']) ?>"
-                        data-role="<?= e($u['role']) ?>">
-                        <td class="text-muted row-num"><?= $i + 1 ?></td>
-                        <td class="fw-bold"><?= e($u['full_name']) ?></td>
-                        <td><span class="uid-code"><?= e($u['unique_id']) ?></span></td>
-                        <td dir="ltr" class="text-end small"><?= e($u['email']) ?></td>
-                        <td dir="ltr" class="text-end small"><?= e($u['phone']) ?></td>
-                        <td><span class="badge <?= $roleBadgeClass[$u['role']] ?? 'bg-secondary' ?>"><?= $roleLabels[$u['role']] ?? $u['role'] ?></span></td>
-                        <td>
-                            <?php if ($u['is_active']): ?>
-                                <span class="badge bg-success">نشط</span>
-                            <?php else: ?>
-                                <span class="badge bg-danger">معطّل</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="small text-muted"><?= formatDate($u['created_at']) ?></td>
-                        <td>
-                            <div class="d-flex gap-1">
-                                <button class="btn btn-sm btn-outline-primary" onclick='editUser(<?= json_encode($u, JSON_UNESCAPED_UNICODE) ?>)' title="تعديل">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <form method="post" action="<?= $toggleUrl ?>" style="display:inline" onsubmit="return confirm('تأكيد تغيير حالة الحساب؟')">
-                                    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                                    <button class="btn btn-sm btn-outline-warning" title="تفعيل/تعطيل">
-                                        <i class="bi bi-power"></i>
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php if (empty($users)): ?>
-                    <tr><td colspan="9" class="text-center text-muted py-4">
-                        <i class="bi bi-inbox" style="font-size: 24px; opacity: 0.4;"></i>
-                        <p class="mt-2">لا مستخدمون</p>
-                    </td></tr>
-                    <?php endif; ?>
-                </tbody>
+                <tbody id="usersTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -216,10 +170,7 @@ $roleBadgeClass = ['admin'=>'bg-danger','doctor'=>'bg-primary','reception'=>'bg-
 var allUsers = <?= json_encode($users, JSON_UNESCAPED_UNICODE) ?>;
 var currentPage = 1;
 
-function applyFilters() {
-    currentPage = 1;
-    renderTable();
-}
+function applyFilters() { currentPage = 1; renderTable(); }
 
 function renderTable() {
     var search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
@@ -228,28 +179,30 @@ function renderTable() {
 
     var filtered = allUsers.filter(function(u) {
         var matchSearch = !search ||
-            u.full_name.toLowerCase().includes(search) ||
-            u.email.toLowerCase().includes(search) ||
-            u.unique_id.includes(search) ||
-            u.phone.includes(search);
+            (u.full_name||'').toLowerCase().includes(search) ||
+            (u.email||'').toLowerCase().includes(search) ||
+            (u.unique_id||'').includes(search) ||
+            (u.phone||'').includes(search);
         var matchRole = !roleFilter || u.role === roleFilter;
         return matchSearch && matchRole;
     });
 
     var totalPages = Math.ceil(filtered.length / pageSize) || 1;
     if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
     var start = (currentPage - 1) * pageSize;
     var pageData = filtered.slice(start, start + pageSize);
 
+    var roleLabels = {admin:'مدير',doctor:'طبيب',reception:'استقبال',lab_tech:'فني مختبر',patient:'مريض'};
+    var roleBadgeClass = {admin:'bg-danger',doctor:'bg-primary',reception:'bg-info',lab_tech:'bg-warning text-dark',patient:'bg-secondary'};
     var tbody = document.getElementById('usersTableBody');
+
     if (pageData.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size:24px;opacity:0.4;"></i><p class="mt-2">لا نتائج مطابقة</p></td></tr>';
     } else {
-        var roleLabels = {admin:'مدير',doctor:'طبيب',reception:'استقبال',lab_tech:'فني مختبر',patient:'مريض'};
-        var roleBadgeClass = {admin:'bg-danger',doctor:'bg-primary',reception:'bg-info',lab_tech:'bg-warning text-dark',patient:'bg-secondary'};
+        var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
         tbody.innerHTML = pageData.map(function(u, i) {
             var num = start + i + 1;
-            var csrf = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
             var toggleUrl = '<?= url('/admin/users') ?>/' + u.id + '/toggle';
             return '<tr>' +
                 '<td class="text-muted">' + num + '</td>' +
@@ -271,18 +224,46 @@ function renderTable() {
     }
 
     document.getElementById('resultCount').textContent = filtered.length + ' سجل';
+    renderPagination(totalPages, filtered.length, start, pageData.length);
+}
 
-    // Pagination controls
+function renderPagination(totalPages, totalRows, start, count) {
     var paginationBar = document.getElementById('paginationBar');
-    if (totalPages > 1) {
-        var html = '<div class="d-flex justify-content-between align-items-center"><small class="text-muted">صفحة ' + currentPage + ' من ' + totalPages + '</small><div class="btn-group btn-group-sm">';
-        if (currentPage > 1) html += '<button class="btn btn-outline-primary" onclick="goPage(' + (currentPage-1) + ')">السابق</button>';
-        if (currentPage < totalPages) html += '<button class="btn btn-outline-primary" onclick="goPage(' + (currentPage+1) + ')">التالي</button>';
-        html += '</div></div>';
-        paginationBar.innerHTML = html;
+    if (totalPages <= 1) { paginationBar.innerHTML = ''; return; }
+
+    var info = '<div class="medcore-pagination-info">عرض ' + (start+1) + ' إلى ' + (start+count) + ' من ' + totalRows + ' سجل</div>';
+    var html = '<div class="medcore-pagination">';
+
+    // Previous button
+    html += '<button class="page-btn' + (currentPage <= 1 ? ' disabled' : '') + '" ' + (currentPage <= 1 ? '' : 'onclick="goPage('+(currentPage-1)+')"') + '><i class="bi bi-chevron-right"></i></button>';
+
+    // Number buttons with smart truncation
+    var maxButtons = 7;
+    var pages = [];
+    if (totalPages <= maxButtons) {
+        for (var i = 1; i <= totalPages; i++) pages.push(i);
     } else {
-        paginationBar.innerHTML = '';
+        pages.push(1);
+        if (currentPage > 3) pages.push('...');
+        var s = Math.max(2, currentPage - 1);
+        var e = Math.min(totalPages - 1, currentPage + 1);
+        for (var i = s; i <= e; i++) pages.push(i);
+        if (currentPage < totalPages - 2) pages.push('...');
+        pages.push(totalPages);
     }
+    pages.forEach(function(p) {
+        if (p === '...') {
+            html += '<span class="page-dots">…</span>';
+        } else {
+            html += '<button class="page-btn' + (p === currentPage ? ' active' : '') + '" onclick="goPage('+p+')">' + p + '</button>';
+        }
+    });
+
+    // Next button
+    html += '<button class="page-btn' + (currentPage >= totalPages ? ' disabled' : '') + '" ' + (currentPage >= totalPages ? '' : 'onclick="goPage('+(currentPage+1)+')"') + '><i class="bi bi-chevron-left"></i></button>';
+    html += '</div>';
+
+    paginationBar.innerHTML = info + html;
 }
 
 function goPage(p) { currentPage = p; renderTable(); }
@@ -313,7 +294,9 @@ function editUser(u) {
     document.getElementById('uf_gender').value = u.gender || '';
     document.getElementById('uf_birth').value = u.birth_date || '';
     document.getElementById('uf_address').value = u.address || '';
+    // ⚡ Fix: doctor fields now come from the LEFT JOIN in the controller
     if (u.department_id) document.getElementById('uf_dept').value = u.department_id;
+    else document.getElementById('uf_dept').value = '';
     document.getElementById('uf_specialty').value = u.specialty || '';
     document.getElementById('uf_license').value = u.license_no || '';
     toggleDoctorFields();
@@ -325,7 +308,6 @@ function toggleDoctorFields() {
     document.getElementById('doctorFields').style.display = (role === 'doctor') ? 'block' : 'none';
 }
 
-// Initialize
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', renderTable);
 } else {

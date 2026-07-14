@@ -85,14 +85,19 @@ class AdminController extends Controller
         }
 
         if ($users === null) {
-            $sql = "SELECT * FROM users WHERE 1=1";
+            // ⚡ LEFT JOIN doctors to get department_id, specialty, license_no
+            // for the edit modal (was missing — fields showed empty)
+            $sql = "SELECT u.*, d.department_id, d.specialty, d.license_no
+                    FROM users u
+                    LEFT JOIN doctors d ON u.id = d.user_id
+                    WHERE 1=1";
             $params = [];
-            if ($role) { $sql .= " AND role = ?"; $params[] = $role; }
+            if ($role) { $sql .= " AND u.role = ?"; $params[] = $role; }
             if ($q) {
-                $sql .= " AND (full_name LIKE ? OR email LIKE ? OR unique_id LIKE ? OR phone LIKE ?)";
+                $sql .= " AND (u.full_name LIKE ? OR u.email LIKE ? OR u.unique_id LIKE ? OR u.phone LIKE ?)";
                 $qq = "%$q%"; $params = array_merge($params, [$qq, $qq, $qq, $qq]);
             }
-            $sql .= " ORDER BY created_at DESC LIMIT 200";
+            $sql .= " ORDER BY u.created_at DESC LIMIT 200";
             $users = Database::fetchAll($sql, $params);
             $departments = Database::fetchAll("SELECT * FROM departments ORDER BY name_ar");
 
