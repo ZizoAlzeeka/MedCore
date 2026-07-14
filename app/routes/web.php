@@ -6,8 +6,6 @@
 $router = new Router();
 
 // ===== Health check endpoint (used by Coolify/Render) — lightweight, NO DB =====
-// Returns 200 + JSON {ok:true} immediately. Avoids triggering DB connection
-// (which can be slow on cold starts) for health check pings.
 $router->add('GET', '/health', function () {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate');
@@ -17,6 +15,67 @@ $router->add('GET', '/health', function () {
         'ts' => date('c'),
         'php' => PHP_VERSION,
     ], JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
+// ===== Admin-only: reset seed passwords (fixes login issues) =====
+$router->add('GET', '/reset-passwords', function () {
+    // Only allow admin to run this
+    if (!Auth::check() || Auth::role() !== 'admin') {
+        http_response_code(403);
+        echo 'Admin only';
+        exit;
+    }
+
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "Resetting passwords...\n";
+
+    // Reset all seed passwords
+    $passwords = [
+        'admin@platform.com' => 'admin123',
+        'doctor1@platform.com' => 'doctor123',
+        'doctor2@platform.com' => 'doctor123',
+        'doctor3@platform.com' => 'doctor123',
+        'doctor4@platform.com' => 'doctor123',
+        'doctor5@platform.com' => 'doctor123',
+        'doctor6@platform.com' => 'doctor123',
+        'doctor7@platform.com' => 'doctor123',
+        'doctor8@platform.com' => 'doctor123',
+        'doctor9@platform.com' => 'doctor123',
+        'doctor10@platform.com' => 'doctor123',
+        'reception1@platform.com' => 'reception123',
+        'reception2@platform.com' => 'reception123',
+        'lab1@platform.com' => 'lab123',
+        'lab2@platform.com' => 'lab123',
+        'patient1@platform.com' => 'patient123',
+        'patient2@platform.com' => 'patient123',
+        'patient3@platform.com' => 'patient123',
+        'patient4@platform.com' => 'patient123',
+        'patient5@platform.com' => 'patient123',
+        'patient6@platform.com' => 'patient123',
+        'patient7@platform.com' => 'patient123',
+        'patient8@platform.com' => 'patient123',
+        'patient9@platform.com' => 'patient123',
+        'patient10@platform.com' => 'patient123',
+        'patient11@platform.com' => 'patient123',
+        'patient12@platform.com' => 'patient123',
+    ];
+
+    $reset = 0;
+    foreach ($passwords as $email => $pass) {
+        $hash = password_hash($pass, PASSWORD_DEFAULT);
+        $stmt = Database::query("UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?", [$hash, $email]);
+        if ($stmt->rowCount() > 0) $reset++;
+    }
+
+    // Clear ALL APCu cache
+    if (function_exists('apcu_clear_cache')) {
+        apcu_clear_cache();
+    }
+
+    echo "Reset $reset passwords.\n";
+    echo "APCu cache cleared.\n";
+    echo "Done! Try logging in now.";
     exit;
 });
 
