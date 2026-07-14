@@ -45,23 +45,43 @@
 
 <div class="auth-modern-demo">
     <div class="auth-demo-title">
-        <i class="bi bi-info-circle"></i> بيانات تجريبية:
+        <i class="bi bi-info-circle"></i> بيانات تجريبية للدخول السريع:
     </div>
     <div class="auth-demo-list">
-        <div class="auth-demo-item">
-            <span class="auth-demo-role">مدير</span>
+        <div class="auth-demo-item" onclick="quickFill('admin@platform.com','admin123')" style="cursor:pointer;" title="اضغط للتعبئة التلقائية">
+            <span class="auth-demo-role" style="background:#dc2626;">مدير</span>
             <code>admin@platform.com</code>
             <span class="auth-demo-pass">admin123</span>
         </div>
-        <div class="auth-demo-item">
-            <span class="auth-demo-role">طبيب</span>
+        <div class="auth-demo-item" onclick="quickFill('doctor1@platform.com','doctor123')" style="cursor:pointer;" title="اضغط للتعبئة التلقائية">
+            <span class="auth-demo-role" style="background:#2563eb;">طبيب</span>
             <code>doctor1@platform.com</code>
             <span class="auth-demo-pass">doctor123</span>
         </div>
-        <div class="auth-demo-item">
-            <span class="auth-demo-role">مريض</span>
+        <div class="auth-demo-item" onclick="quickFill('reception1@platform.com','reception123')" style="cursor:pointer;" title="اضغط للتعبئة التلقائية">
+            <span class="auth-demo-role" style="background:#0891b2;">استقبال</span>
+            <code>reception1@platform.com</code>
+            <span class="auth-demo-pass">reception123</span>
+        </div>
+        <div class="auth-demo-item" onclick="quickFill('lab1@platform.com','lab123')" style="cursor:pointer;" title="اضغط للتعبئة التلقائية">
+            <span class="auth-demo-role" style="background:#d97706;">مختبر</span>
+            <code>lab1@platform.com</code>
+            <span class="auth-demo-pass">lab123</span>
+        </div>
+        <div class="auth-demo-item" onclick="quickFill('patient1@platform.com','patient123')" style="cursor:pointer;" title="اضغط للتعبئة التلقائية">
+            <span class="auth-demo-role" style="background:#4f46e5;">مريض</span>
             <code>patient1@platform.com</code>
             <span class="auth-demo-pass">patient123</span>
         </div>
     </div>
 </div>
+
+<script>
+function quickFill(email, pass) {
+    var emailInput = document.querySelector('input[name="email"]');
+    var passInput = document.getElementById('password');
+    if (emailInput) { emailInput.value = email; emailInput.dispatchEvent(new Event('input')); }
+    if (passInput) { passInput.value = pass; passInput.dispatchEvent(new Event('input')); }
+    if (emailInput) emailInput.focus();
+}
+</script>

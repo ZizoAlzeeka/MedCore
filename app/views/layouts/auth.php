@@ -31,6 +31,7 @@ $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة
     <!-- Left: Brand panel (decorative) -->
     <div class="auth-brand-panel">
         <div class="auth-brand-bg"></div>
+        <div class="auth-brand-overlay"></div>
         <div class="auth-brand-content">
             <div class="auth-brand-logo">
                 <img src="<?= asset('img/logo.png') ?>" alt="logo">

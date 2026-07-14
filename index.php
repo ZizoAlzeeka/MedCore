@@ -101,7 +101,56 @@ if (!file_exists($migrationFlagFile)) {
                 Logger::info('[migration-runner] applied: ' . $m);
             }
         }
-        // Write the flag file (with a timestamp + commit hash for debugging)
+
+        // ⚡ Ensure seed passwords are correct on every cold start.
+        // This fixes the "passwords change on every deploy" issue — we verify
+        // that admin@platform.com can login with admin123, and if NOT, we
+        // reset ALL seed passwords. This runs ONCE per container boot (inside
+        // the migration flag check), not on every request.
+        try {
+            $adminUser = Database::fetch("SELECT password_hash FROM users WHERE email = 'admin@platform.com' LIMIT 1");
+            if ($adminUser && !password_verify('admin123', $adminUser['password_hash'])) {
+                // Password doesn't match — reset all seed passwords
+                $seedPasswords = [
+                    'admin@platform.com' => 'admin123',
+                    'doctor1@platform.com' => 'doctor123',
+                    'doctor2@platform.com' => 'doctor123',
+                    'doctor3@platform.com' => 'doctor123',
+                    'doctor4@platform.com' => 'doctor123',
+                    'doctor5@platform.com' => 'doctor123',
+                    'doctor6@platform.com' => 'doctor123',
+                    'doctor7@platform.com' => 'doctor123',
+                    'doctor8@platform.com' => 'doctor123',
+                    'doctor9@platform.com' => 'doctor123',
+                    'doctor10@platform.com' => 'doctor123',
+                    'reception1@platform.com' => 'reception123',
+                    'reception2@platform.com' => 'reception123',
+                    'lab1@platform.com' => 'lab123',
+                    'lab2@platform.com' => 'lab123',
+                    'patient1@platform.com' => 'patient123',
+                    'patient2@platform.com' => 'patient123',
+                    'patient3@platform.com' => 'patient123',
+                    'patient4@platform.com' => 'patient123',
+                    'patient5@platform.com' => 'patient123',
+                    'patient6@platform.com' => 'patient123',
+                    'patient7@platform.com' => 'patient123',
+                    'patient8@platform.com' => 'patient123',
+                    'patient9@platform.com' => 'patient123',
+                    'patient10@platform.com' => 'patient123',
+                    'patient11@platform.com' => 'patient123',
+                    'patient12@platform.com' => 'patient123',
+                ];
+                foreach ($seedPasswords as $email => $pass) {
+                    $hash = password_hash($pass, PASSWORD_DEFAULT);
+                    Database::query("UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?", [$hash, $email]);
+                }
+                Logger::info('[password-reset] Reset ' . count($seedPasswords) . ' seed passwords on cold start');
+            }
+        } catch (Throwable $e) {
+            Logger::error('[password-reset] Failed: ' . $e->getMessage());
+        }
+
+        // Write the flag file
         @file_put_contents($migrationFlagFile, json_encode([
             'migrated_at' => date('Y-m-d H:i:s'),
             'php_version' => PHP_VERSION,
@@ -111,7 +160,6 @@ if (!file_exists($migrationFlagFile)) {
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     } catch (Throwable $e) {
         Logger::error('AutoMigrator threw: ' . $e->getMessage());
-        // Don't write the flag — try again on next request
     }
 }
 
