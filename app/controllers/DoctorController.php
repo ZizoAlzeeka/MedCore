@@ -99,8 +99,11 @@ class DoctorController extends Controller
         $orders = (new TestOrder())->forPatient($id);
         $treatments = (new TreatmentPlan())->forPatient($id);
         $referrals = (new Referral())->forPatient($id);
+        // List of all active doctors for the referral dropdown (exclude current doctor in the view)
+        $allDoctors = (new User())->doctors();
+        $currentDoctorId = $this->doctorId;
         $title = 'ملف المريض';
-        viewWithLayout('doctor/patient_profile', compact('patient', 'orders', 'treatments', 'referrals', 'title'));
+        viewWithLayout('doctor/patient_profile', compact('patient', 'orders', 'treatments', 'referrals', 'allDoctors', 'currentDoctorId', 'title'));
     }
 
     public function showOrderTest($id)
@@ -288,23 +291,41 @@ class DoctorController extends Controller
     public function referPatient($id)
     {
         Auth::csrfVerify();
-        $toDoctorId = (int) $_POST['to_doctor_id'];
+        $toDoctorId = (int) ($_POST['to_doctor_id'] ?? 0);
         $reason = trim($_POST['reason'] ?? '');
+        if (!$toDoctorId) { flash('error', 'اختر طبيباً للإحالة'); redirect("/doctor/patients/$id"); }
         if ($toDoctorId === $this->doctorId) { flash('error', 'لا يمكن الإحالة لنفس الطبيب'); redirect("/doctor/patients/$id"); }
-        Database::insert('referrals', [
+
+        // Verify patient exists
+        $patient = Database::fetch("SELECT full_name FROM users WHERE id = ? AND role='patient'", [$id]);
+        if (!$patient) { flash('error', 'المريض غير موجود'); redirect('/doctor/patients'); }
+
+        $referralId = Database::insert('referrals', [
             'patient_id' => $id,
             'from_doctor_id' => $this->doctorId,
             'to_doctor_id' => $toDoctorId,
             'reason' => $reason,
             'referred_at' => now(),
         ]);
-        // Notify target doctor
+
+        // Notify the TARGET doctor (to_doctor_id → get user_id from doctors table)
         $toDoctorUserId = Database::fetchColumn("SELECT user_id FROM doctors WHERE id = ?", [$toDoctorId]);
         if ($toDoctorUserId) {
-            $patientName = Database::fetchColumn("SELECT full_name FROM users WHERE id = ?", [$id]);
-            (new Notification())->send($toDoctorUserId, 'general', 'إحالة مريض جديد', "تمت إحالة المريض $patientName إليك", $id);
+            (new Notification())->send(
+                $toDoctorUserId,
+                'referral',
+                'إحالة مريض جديد',
+                "تمت إحالة المريض " . $patient['full_name'] . " إليك" . ($reason ? " — السبب: " . $reason : ''),
+                $id
+            );
+            // Invalidate target doctor's notification APCu cache so the badge updates immediately
+            if (function_exists('apcu_delete')) {
+                apcu_delete('notif_data_' . $toDoctorUserId);
+            }
         }
-        flash('success', 'تمت الإحالة');
+
+        Logger::audit('referral', Auth::id(), ['referral_id' => $referralId, 'patient' => $id, 'to_doctor' => $toDoctorId]);
+        flash('success', 'تمت الإحالة بنجاح — تم إشعار الطبيب المعني');
         redirect("/doctor/patients/$id");
     }
 }

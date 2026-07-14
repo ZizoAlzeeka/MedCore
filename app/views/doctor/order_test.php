@@ -70,9 +70,9 @@
                 <tbody>
                     <?php foreach ($recentOrders as $o): ?>
                         <tr>
-                            <td><span class="loinc-code"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
+                            <td><span class="loinc-code" dir="ltr"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
                             <td><?= statusBadge($o['status']) ?></td>
-                            <td class="small"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
+                            <td class="small" dir="ltr" style="text-align:right;"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
                             <td class="small text-muted"><?= formatDate($o['ordered_at']) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -106,48 +106,55 @@ document.getElementById('testSearch').addEventListener('input', function() {
                     container.innerHTML = '<div class="text-muted text-center py-3"><i class="bi bi-info-circle"></i> لا نتائج</div>';
                     return;
                 }
-                container.innerHTML = data.tests.map(t => {
-                    var safe = JSON.stringify(t).replace(/'/g, "\\'");
-                    return `<div class="border rounded p-2 mb-1 cursor-pointer test-item" onclick="selectTest(${safe})">
-                        <span class="loinc-code">${t.loinc_code||''}</span>
-                        <strong>${t.name_ar||''}</strong>
-                        <span class="text-muted small">${t.name_en||''}</span>
-                        ${t.category ? '<span class="badge bg-info">'+t.category+'</span>' : ''}
-                    </div>`;
+                container.innerHTML = data.tests.map(function(t, idx) {
+                    // ⚡ Use data attribute + index-based lookup instead of inline JSON
+                    // (avoids SyntaxError from unescaped characters in onclick)
+                    return '<div class="border rounded p-2 mb-1 cursor-pointer test-item" data-test-idx="' + idx + '" onclick="selectTestByIdx(' + idx + ')">' +
+                        '<span class="loinc-code">' + (t.loinc_code||'') + '</span> ' +
+                        '<strong>' + (t.name_ar||'') + '</strong> ' +
+                        '<span class="text-muted small">' + (t.name_en||'') + '</span> ' +
+                        (t.category ? '<span class="badge bg-info">' + t.category + '</span>' : '') +
+                        '</div>';
                 }).join('');
+                // Store tests data globally for lookup
+                window._testSearchResults = data.tests;
             });
     }, 200);
 });
 
+function selectTestByIdx(idx) {
+    var t = window._testSearchResults && window._testSearchResults[idx];
+    if (!t) return;
+    selectTest(t);
+}
+
 function selectTest(t) {
     document.getElementById('test_id').value = t.id;
-    document.getElementById('testInfo').innerHTML = `<span class="loinc-code">${t.loinc_code||''}</span> <strong>${t.name_ar||''}</strong> (${t.name_en||''}) — عينة: ${t.sample_type||'-'}`;
+    document.getElementById('testInfo').innerHTML = '<span class="loinc-code">' + (t.loinc_code||'') + '</span> <strong>' + (t.name_ar||'') + '</strong> (' + (t.name_en||'') + ') — عينة: ' + (t.sample_type||'-');
     document.getElementById('orderForm').style.display = 'block';
     document.getElementById('duplicateAlert').innerHTML = '';
     document.getElementById('usePrevBtn').style.display = 'none';
     document.getElementById('decision').value = 'proceed';
 
     // Check duplicate
-    fetch(`/ajax/check-duplicate?patient_id=${patientId}&test_id=${t.id}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(r => r.json())
-        .then(data => {
+    fetch('/ajax/check-duplicate?patient_id=' + patientId + '&test_id=' + t.id, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
             if (data.duplicate) {
-                const prev = data.prev;
-                const alertHtml = `
-                    <div class="dup-alert">
-                        <div class="dup-title"><i class="bi bi-exclamation-triangle-fill"></i> تنبيه: هذا التحليل تم إجراؤه مؤخراً!</div>
-                        <div class="dup-msg">تم إجراء نفس التحليل قبل <strong>${prev.days_diff} يوم</strong> بتاريخ <strong>${prev.ordered_at}</strong>.</div>
-                        <div class="prev-result">
-                            <strong>النتيجة السابقة:</strong> ${prev.result_value} ${prev.unit}<br>
-                            <strong>العلم:</strong> ${prev.flag}<br>
-                            <strong>الطبيب:</strong> ${prev.doctor_name || '-'}
-                        </div>
-                    </div>
-                `;
+                var prev = data.prev;
+                var alertHtml = '<div class="dup-alert">' +
+                    '<div class="dup-title"><i class="bi bi-exclamation-triangle-fill"></i> تنبيه: هذا التحليل تم إجراؤه مؤخراً!</div>' +
+                    '<div class="dup-msg">تم إجراء نفس التحليل قبل <strong>' + prev.days_diff + ' يوم</strong> بتاريخ <strong>' + prev.ordered_at + '</strong>.</div>' +
+                    '<div class="prev-result">' +
+                    '<strong>النتيجة السابقة:</strong> <span dir="ltr">' + prev.result_value + ' ' + (prev.unit||'') + '</span><br>' +
+                    '<strong>العلم:</strong> ' + prev.flag + '<br>' +
+                    '<strong>الطبيب:</strong> ' + (prev.doctor_name || '-') +
+                    '</div></div>';
                 document.getElementById('duplicateAlert').innerHTML = alertHtml;
                 document.getElementById('usePrevBtn').style.display = 'inline-block';
             }
-        });
+        })
+        .catch(function(err) { console.error('Duplicate check error:', err); });
 }
 
 // ⚡ ICD-10 live suggestions

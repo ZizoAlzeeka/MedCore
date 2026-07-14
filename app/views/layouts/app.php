@@ -101,7 +101,7 @@ switch ($role) {
             ['label' => 'لوحة التحكم', 'url' => '/patient', 'icon' => 'bi-grid-1x2'],
             ['section' => 'طبي'],
             ['label' => 'نتائج التحاليل', 'url' => '/patient/results', 'icon' => 'bi-clipboard2-data'],
-            ['label' => 'خطة العلاج', 'url' => '/patient/treatment', 'icon' => 'bi-capsules'],
+            ['label' => 'خطة العلاج', 'url' => '/patient/treatment', 'icon' => 'bi-prescription2'],
             ['label' => 'مواعيدي', 'url' => '/patient/appointments', 'icon' => 'bi-calendar-check'],
             ['label' => 'طباعة تقرير', 'url' => '/patient/print-report', 'icon' => 'bi-printer'],
             ['section' => 'أخرى'],

@@ -67,7 +67,7 @@ $userUid = $user['unique_id'] ?? '';
     print-color-adjust: exact;
 }
 .pr-results-table td.center { text-align: center; }
-.pr-results-table .loinc { font-family: monospace; font-weight: 700; color: #6C63FF; }
+.pr-results-table .loinc { font-family: monospace; font-weight: 700; color: #6C63FF; direction: ltr; unicode-bidi: embed; }
 
 .pr-flag { padding: 2px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 700; }
 .pr-flag.normal { background: #d1fae5; color: #065f46; }
@@ -168,10 +168,10 @@ $userUid = $user['unique_id'] ?? '';
                             $flagLabel = statusLabel($o['flag']);
                         ?>
                         <tr>
-                            <td><span class="loinc"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
-                            <td class="center fw-bold"><?= e($o['result_value']) ?></td>
-                            <td class="center"><?= e($o['unit']) ?></td>
-                            <td class="center"><?= e($o['normal_range']) ?></td>
+                            <td><span class="loinc" dir="ltr"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
+                            <td class="center fw-bold" dir="ltr"><?= e($o['result_value']) ?></td>
+                            <td class="center" dir="ltr"><?= e($o['unit']) ?></td>
+                            <td class="center" dir="ltr"><?= e($o['normal_range']) ?></td>
                             <td class="center"><span class="pr-flag <?= $flagClass ?>"><?= $flagLabel ?></span></td>
                             <td class="center"><?= formatDate($o['performed_at']) ?></td>
                             <td class="center"><?= e($o['doctor_name']) ?></td>

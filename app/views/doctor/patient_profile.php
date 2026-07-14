@@ -40,23 +40,21 @@ $isPrintMode = isset($_GET['print']);
                 <form method="post" action="<?= url('/doctor/patients/' . $patient['id'] . '/refer') ?>">
                     <?= csrf_field() ?>
                     <div class="mb-2">
-                        <label class="form-label">الطبيب</label>
+                        <label class="form-label">الطبيب <span class="text-danger">*</span></label>
                         <select name="to_doctor_id" class="form-select" required>
-                            <option value="">— اختر —</option>
-                            <?php
-                            $allDoctors = (new User())->doctors();
-                            foreach ($allDoctors as $d):
-                                if ($d['id'] == Database::fetchColumn("SELECT id FROM doctors WHERE user_id = ?", [Auth::id()])) continue;
-                            ?>
-                                <option value="<?= $d['id'] ?>"><?= e($d['full_name']) ?> — <?= e($d['department_name']) ?></option>
+                            <option value="">— اختر طبيباً —</option>
+                            <?php foreach ($allDoctors as $d): ?>
+                                <?php if ((int)$d['doctor_id'] === (int)$currentDoctorId) continue; ?>
+                                <option value="<?= (int)$d['doctor_id'] ?>"><?= e($d['full_name']) ?> — <?= e($d['department_name'] ?: 'بدون قسم') ?><?= !empty($d['specialty']) ? ' (' . e($d['specialty']) . ')' : '' ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <small class="text-muted">يظهر جميع الأطباء النشطين في المنصة (<?= count($allDoctors) - 1 ?> طبيب متاح).</small>
                     </div>
                     <div class="mb-2">
                         <label class="form-label">السبب</label>
-                        <textarea name="reason" class="form-control" rows="2"></textarea>
+                        <textarea name="reason" class="form-control" rows="2" placeholder="سبب الإحالة (اختياري)"></textarea>
                     </div>
-                    <button class="btn btn-sm btn-warning w-100"><i class="bi bi-send"></i> إحالة</button>
+                    <button class="btn btn-sm btn-warning w-100"><i class="bi bi-send"></i> إحالة المريض</button>
                 </form>
             </div>
         </div>
@@ -74,9 +72,9 @@ $isPrintMode = isset($_GET['print']);
                         <tbody>
                             <?php foreach ($orders as $o): ?>
                                 <tr>
-                                    <td><span class="loinc-code"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
+                                    <td><span class="loinc-code" dir="ltr"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
                                     <td><?= statusBadge($o['status']) ?></td>
-                                    <td class="small"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
+                                    <td class="small" dir="ltr" style="text-align:right;"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
                                     <td><?= $o['flag'] ? statusBadge($o['flag']) : '-' ?></td>
                                     <td class="small text-muted"><?= formatDate($o['ordered_at']) ?></td>
                                     <td>

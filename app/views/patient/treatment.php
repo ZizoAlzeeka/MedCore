@@ -1,6 +1,6 @@
 <?php /** Patient: treatment plans — uses window.print() */ ?>
 <div class="page-header no-print">
-    <h2 class="page-title"><i class="bi bi-capsules"></i> <?= e($title) ?></h2>
+    <h2 class="page-title"><i class="bi bi-prescription2"></i> <?= e($title) ?></h2>
 </div>
 
 <?php if (empty($treatments)): ?>

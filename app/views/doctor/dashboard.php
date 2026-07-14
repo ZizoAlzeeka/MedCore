@@ -74,7 +74,7 @@
                             <?php foreach ($recentOrders as $o): ?>
                                 <tr>
                                     <td><a href="<?= url('/doctor/patients/' . $o['patient_id']) ?>" class="text-decoration-none fw-bold"><?= e($o['patient_name']) ?></a></td>
-                                    <td class="small"><span class="loinc-code"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
+                                    <td class="small"><span class="loinc-code" dir="ltr"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
                                     <td><?= statusBadge($o['status']) ?></td>
                                     <td class="small text-muted"><?= formatDate($o['ordered_at']) ?></td>
                                 </tr>
