@@ -8,24 +8,22 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        // ⚡ Performance: cache ALL dashboard stats in APCu for 30 seconds.
-        // Remote MySQL has ~300ms latency per query. Without cache, dashboard
-        // takes 2+ seconds. With cache, repeated loads are ~0.2s.
-        $cacheKey = 'admin_dashboard_stats';
+        // ⚡ Cache ENTIRE dashboard data in APCu for 30 seconds.
+        // Remote MySQL has ~300ms latency per query — 4 queries = 1.2s.
+        // With cache: 0 queries = ~0.2s.
+        $cacheKey = 'admin_dashboard_all';
         $cached = null;
         if (function_exists('apcu_fetch')) {
             $cached = apcu_fetch($cacheKey);
         }
 
         if ($cached === false || $cached === null) {
-            // Single query to get ALL user counts by role
             $roleCounts = Database::fetchAll("SELECT role, COUNT(*) AS cnt FROM users GROUP BY role");
             $roleMap = [];
             foreach ($roleCounts as $rc) {
                 $roleMap[$rc['role']] = (int) $rc['cnt'];
             }
 
-            // Combine all count queries into ONE using subqueries
             $counts = Database::fetch(
                 "SELECT
                     (SELECT COUNT(*) FROM departments) AS departments,
@@ -52,6 +50,8 @@ class AdminController extends Controller
                     'total' => (int) $counts['dup_total'],
                     'prevented' => (int) $counts['dup_prevented'],
                 ],
+                'recentAlerts' => (new DuplicateAlert())->recent(8),
+                'recentUsers' => Database::fetchAll("SELECT * FROM users ORDER BY id DESC LIMIT 6"),
             ];
 
             if (function_exists('apcu_store')) {
@@ -59,11 +59,7 @@ class AdminController extends Controller
             }
         }
 
-        $stats = $cached['stats'];
-        $dupStats = $cached['dupStats'];
-        $recentAlerts = (new DuplicateAlert())->recent(8);
-        $recentUsers = Database::fetchAll("SELECT * FROM users ORDER BY id DESC LIMIT 6");
-
+        extract($cached);
         $title = 'لوحة تحكم المدير';
         viewWithLayout('admin/dashboard', compact('stats', 'dupStats', 'recentAlerts', 'recentUsers', 'title'));
     }
@@ -298,73 +294,81 @@ class AdminController extends Controller
     // ===== Reports =====
     public function reports()
     {
-        // ⚡ Performance: combine multiple count queries into ONE.
-        // Was: 6 separate queries (4 for ordersByStatus + 2 for dupStats).
-        // Now: 1 query with subqueries.
-        $counts = Database::fetch(
-            "SELECT
-                (SELECT COUNT(*) FROM test_orders WHERE status='ordered') AS ordered,
-                (SELECT COUNT(*) FROM test_orders WHERE status='result_uploaded') AS result_uploaded,
-                (SELECT COUNT(*) FROM test_orders WHERE status='cancelled') AS cancelled,
-                (SELECT COUNT(*) FROM test_orders WHERE status='duplicate_skipped') AS duplicate_skipped,
-                (SELECT COUNT(*) FROM duplicate_alerts) AS dup_total,
-                (SELECT COUNT(*) FROM duplicate_alerts WHERE doctor_decision IN ('cancel','use_previous')) AS dup_prevented
-            "
-        );
-        $ordersByStatus = [
-            'ordered' => (int) $counts['ordered'],
-            'result_uploaded' => (int) $counts['result_uploaded'],
-            'cancelled' => (int) $counts['cancelled'],
-            'duplicate_skipped' => (int) $counts['duplicate_skipped'],
-        ];
-        $dupStats = [
-            'total' => (int) $counts['dup_total'],
-            'prevented' => (int) $counts['dup_prevented'],
-        ];
+        // ⚡ Cache ENTIRE reports data in APCu for 60 seconds.
+        // Was: 7 queries × 300ms = 2.1s. With cache: 0 queries = ~0.2s.
+        $cacheKey = 'admin_reports_all';
+        $cached = null;
+        if (function_exists('apcu_fetch')) {
+            $cached = apcu_fetch($cacheKey);
+        }
 
-        $recentAlerts = (new DuplicateAlert())->recent(50);
-        $deptStats = Database::fetchAll(
-            "SELECT dep.name_ar, COUNT(d.id) AS doctors_count
-             FROM departments dep
-             LEFT JOIN doctors d ON dep.id = d.department_id
-             GROUP BY dep.id ORDER BY doctors_count DESC"
-        );
-        $topDoctors = Database::fetchAll(
-            "SELECT u.full_name, COUNT(o.id) AS orders_count
-             FROM test_orders o
-             JOIN doctors d ON o.doctor_id = d.id
-             JOIN users u ON d.user_id = u.id
-             GROUP BY d.id ORDER BY orders_count DESC LIMIT 5"
-        );
+        if ($cached === false || $cached === null) {
+            $counts = Database::fetch(
+                "SELECT
+                    (SELECT COUNT(*) FROM test_orders WHERE status='ordered') AS ordered,
+                    (SELECT COUNT(*) FROM test_orders WHERE status='result_uploaded') AS result_uploaded,
+                    (SELECT COUNT(*) FROM test_orders WHERE status='cancelled') AS cancelled,
+                    (SELECT COUNT(*) FROM test_orders WHERE status='duplicate_skipped') AS duplicate_skipped,
+                    (SELECT COUNT(*) FROM duplicate_alerts) AS dup_total,
+                    (SELECT COUNT(*) FROM duplicate_alerts WHERE doctor_decision IN ('cancel','use_previous')) AS dup_prevented
+                "
+            );
 
-        // Tests by category
-        $testsByCategory = Database::fetchAll(
-            "SELECT category, COUNT(*) AS cnt
-             FROM tests_catalog
-             WHERE category IS NOT NULL AND category != ''
-             GROUP BY category
-             ORDER BY cnt DESC LIMIT 10"
-        );
+            $cached = [
+                'ordersByStatus' => [
+                    'ordered' => (int) $counts['ordered'],
+                    'result_uploaded' => (int) $counts['result_uploaded'],
+                    'cancelled' => (int) $counts['cancelled'],
+                    'duplicate_skipped' => (int) $counts['duplicate_skipped'],
+                ],
+                'dupStats' => [
+                    'total' => (int) $counts['dup_total'],
+                    'prevented' => (int) $counts['dup_prevented'],
+                ],
+                'recentAlerts' => (new DuplicateAlert())->recent(50),
+                'deptStats' => Database::fetchAll(
+                    "SELECT dep.name_ar, COUNT(d.id) AS doctors_count
+                     FROM departments dep
+                     LEFT JOIN doctors d ON dep.id = d.department_id
+                     GROUP BY dep.id ORDER BY doctors_count DESC"
+                ),
+                'topDoctors' => Database::fetchAll(
+                    "SELECT u.full_name, COUNT(o.id) AS orders_count
+                     FROM test_orders o
+                     JOIN doctors d ON o.doctor_id = d.id
+                     JOIN users u ON d.user_id = u.id
+                     GROUP BY d.id ORDER BY orders_count DESC LIMIT 5"
+                ),
+                'testsByCategory' => Database::fetchAll(
+                    "SELECT category, COUNT(*) AS cnt
+                     FROM tests_catalog
+                     WHERE category IS NOT NULL AND category != ''
+                     GROUP BY category
+                     ORDER BY cnt DESC LIMIT 10"
+                ),
+                'ordersByDept' => Database::fetchAll(
+                    "SELECT dep.name_ar, COUNT(o.id) AS orders_count
+                     FROM test_orders o
+                     JOIN doctors d ON o.doctor_id = d.id
+                     JOIN departments dep ON d.department_id = dep.id
+                     GROUP BY dep.id
+                     ORDER BY orders_count DESC LIMIT 6"
+                ),
+                'recentActivity' => Database::fetchAll(
+                    "SELECT DATE(ordered_at) AS day, COUNT(*) AS cnt
+                     FROM test_orders
+                     WHERE ordered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                     GROUP BY DATE(ordered_at)
+                     ORDER BY day ASC"
+                ),
+            ];
 
-        // Orders by department
-        $ordersByDept = Database::fetchAll(
-            "SELECT dep.name_ar, COUNT(o.id) AS orders_count
-             FROM test_orders o
-             JOIN doctors d ON o.doctor_id = d.id
-             JOIN departments dep ON d.department_id = dep.id
-             GROUP BY dep.id
-             ORDER BY orders_count DESC LIMIT 6"
-        );
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $cached, 60);
+            }
+        }
 
-        // Recent activity timeline (last 30 days)
-        $recentActivity = Database::fetchAll(
-            "SELECT DATE(ordered_at) AS day, COUNT(*) AS cnt
-             FROM test_orders
-             WHERE ordered_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-             GROUP BY DATE(ordered_at)
-             ORDER BY day ASC"
-        );
-
+        extract($cached);
         $title = 'التقارير والإحصائيات';
         viewWithLayout('admin/reports', compact(
             'dupStats', 'recentAlerts', 'ordersByStatus', 'deptStats', 'topDoctors',
