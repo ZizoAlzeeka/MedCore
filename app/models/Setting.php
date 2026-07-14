@@ -8,9 +8,21 @@ class Setting extends Model
     public function getAll()
     {
         if (self::$cache === null) {
+            // ⚡ Use APCu for cross-request caching (static $cache only lives per-request)
+            $apcuKey = 'settings_all';
+            if (function_exists('apcu_fetch')) {
+                $cached = apcu_fetch($apcuKey);
+                if ($cached !== false && $cached !== null) {
+                    self::$cache = $cached;
+                    return self::$cache;
+                }
+            }
             $rows = Database::fetchAll("SELECT * FROM settings");
             self::$cache = [];
             foreach ($rows as $r) self::$cache[$r['key']] = $r['value'];
+            if (function_exists('apcu_store')) {
+                apcu_store($apcuKey, self::$cache, 300); // 5 minutes
+            }
         }
         return self::$cache;
     }

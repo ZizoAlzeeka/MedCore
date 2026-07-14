@@ -58,5 +58,12 @@ require dirname(__DIR__) . '/helpers/functions.php';
 // Start session
 Auth::start();
 
-// Set default header
+// Set default headers
 header('Content-Type: text/html; charset=utf-8');
+// ⚡ CRITICAL: Vary: Cookie tells Cloudflare/CDs NOT to cache pages that
+// differ by session cookie. Without this, the login page (with its CSRF
+// token tied to a specific session) could be cached and served to a
+// different user — causing "CSRF token mismatch" on POST.
+header('Vary: Cookie');
+// ⚡ Never cache dynamic HTML pages
+header('Cache-Control: no-store, no-cache, must-revalidate');

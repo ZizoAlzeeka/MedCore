@@ -8,7 +8,18 @@ class NotificationController extends Controller
 
     public function index()
     {
-        $notifs = (new Notification())->forUser(Auth::id(), 100);
+        // ⚡ Cache notifications for 15s per user
+        $cacheKey = 'notif_page_' . Auth::id();
+        $notifs = null;
+        if (function_exists('apcu_fetch')) {
+            $notifs = apcu_fetch($cacheKey);
+        }
+        if ($notifs === false || $notifs === null) {
+            $notifs = (new Notification())->forUser(Auth::id(), 100);
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $notifs, 15);
+            }
+        }
         $title = 'الإشعارات';
         viewWithLayout('notifications/index', compact('notifs', 'title'));
     }
