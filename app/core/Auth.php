@@ -71,7 +71,20 @@ class Auth
     public static function user()
     {
         if (self::$user === null && self::check()) {
-            self::$user = Database::fetch("SELECT * FROM users WHERE id = ?", [$_SESSION['user_id']]);
+            $userId = $_SESSION['user_id'];
+            // ⚡ Cache user data in APCu for 30s to avoid DB query on every request
+            $cacheKey = 'user_' . $userId;
+            if (function_exists('apcu_fetch')) {
+                $cached = apcu_fetch($cacheKey);
+                if ($cached !== false && $cached !== null) {
+                    self::$user = $cached;
+                    return self::$user;
+                }
+            }
+            self::$user = Database::fetch("SELECT * FROM users WHERE id = ?", [$userId]);
+            if (self::$user && function_exists('apcu_store')) {
+                apcu_store($cacheKey, self::$user, 30);
+            }
         }
         return self::$user;
     }
