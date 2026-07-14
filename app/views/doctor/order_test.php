@@ -37,11 +37,13 @@
 
             <div class="row g-3">
                 <div class="col-md-6">
-                    <label class="form-label">التشخيص المبدئي (ICD-10) <span class="text-muted">(اختياري)</span></label>
+                    <label class="form-label">Diagnosis (ICD-10) <span class="text-muted">(optional)</span></label>
                     <div style="position:relative;">
-                        <input type="text" name="diagnosis_icd" id="icdInput" class="form-control" placeholder="ابحث: ألم بطني، سكري،..." autocomplete="off">
-                        <div id="icdSuggestions" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:1050;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #e0e0e8;border-radius:0 0 10px 10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
+                        <input type="text" name="diagnosis_icd" id="icdInput" class="form-control" dir="ltr" placeholder="Search: diabetes, headache, R10..." autocomplete="off">
+                        <input type="hidden" id="icdSelectedCode" value="">
+                        <div id="icdSuggestions" style="display:none;position:absolute;top:100%;right:0;left:0;z-index:1050;max-height:280px;overflow-y:auto;background:#fff;border:1px solid #e0e0e8;border-radius:0 0 10px 10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
                     </div>
+                    <small class="text-muted" id="icdDesc" style="margin-top:4px;display:block;"></small>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">ملاحظات</label>
@@ -150,62 +152,54 @@ function selectTest(t) {
         });
 }
 
-// ⚡ ICD-10 live suggestions
-var icdData = [
-    {code:'R10', label:'ألم بطني'},
-    {code:'R51', label:'صداع'},
-    {code:'E11.9', label:'سكري من النوع 2'},
-    {code:'I10', label:'ارتفاع ضغط الدم'},
-    {code:'J00', label:'زكام حاد'},
-    {code:'J45.9', label:'ربو'},
-    {code:'K21.9', label:'ارتجاع المريء'},
-    {code:'K76.9', label:'مرض كبدي'},
-    {code:'N17.9', label:'فشل كلوي حاد'},
-    {code:'N39.0', label:'التهاب مسالك بولية'},
-    {code:'M54.5', label:'ألم أسفل الظهر'},
-    {code:'M25.5', label:'ألم في المفصل'},
-    {code:'D50.9', label:'فقر دم'},
-    {code:'E78.5', label:'ارتفاع الكوليسترول'},
-    {code:'E03.9', label:'قصور الغدة الدرقية'},
-    {code:'E05.9', label:'فرط نشاط الغدة الدرقية'},
-    {code:'L20.9', label:'إكزيما'},
-    {code:'L30.9', label:'التهاب جلد'},
-    {code:'H10.9', label:'التهاب ملتحمة العين'},
-    {code:'H52.4', label:'ضعف النظر'},
-    {code:'F41.1', label:'قلق عام'},
-    {code:'F32.9', label:'اكتئاب'},
-    {code:'R42', label:'دوخة'},
-    {code:'R05', label:'سعال'},
-    {code:'R50.9', label:'حمى'},
-    {code:'R19.0', label:'ألم بطن علوي'},
-    {code:'K59.0', label:'إمساك'},
-    {code:'K52.9', label:'إسهال'},
-    {code:'I63.9', label:'سكتة دماغية'},
-    {code:'I50.9', label:'فشل قلبي'},
-];
-
+// ⚡ ICD-10 live search via NLM Clinical Tables API (English only, LTR)
 var icdInput = document.getElementById('icdInput');
 var icdSuggestions = document.getElementById('icdSuggestions');
+var icdDesc = document.getElementById('icdDesc');
+var icdSelectedCode = document.getElementById('icdSelectedCode');
+var icdTimer = null;
 
 icdInput.addEventListener('input', function() {
-    var q = this.value.toLowerCase().trim();
-    if (q.length < 1) { icdSuggestions.style.display = 'none'; return; }
-    var matches = icdData.filter(function(item) {
-        return item.code.toLowerCase().includes(q) || item.label.toLowerCase().includes(q);
-    }).slice(0, 10);
-    if (matches.length === 0) { icdSuggestions.style.display = 'none'; return; }
-    icdSuggestions.innerHTML = matches.map(function(m) {
-        return '<div class="icd-suggestion" onclick="selectICD(\'' + m.code + '\')"><strong>' + m.code + '</strong> — ' + m.label + '</div>';
-    }).join('');
-    icdSuggestions.style.display = 'block';
+    clearTimeout(icdTimer);
+    var q = this.value.trim();
+    icdSelectedCode.value = '';
+    icdDesc.textContent = '';
+    if (q.length < 2) { icdSuggestions.style.display = 'none'; return; }
+    icdTimer = setTimeout(function() {
+        icdSuggestions.innerHTML = '<div style="padding:8px;text-align:center;color:#636E72;font-size:12px;"><div class="spinner-border spinner-border-sm"></div> Searching ICD-10...</div>';
+        icdSuggestions.style.display = 'block';
+        fetch('/ajax/icd/search?q=' + encodeURIComponent(q), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data.results || data.results.length === 0) {
+                    icdSuggestions.innerHTML = '<div style="padding:8px;text-align:center;color:#636E72;font-size:12px;">No ICD-10 codes found</div>';
+                    return;
+                }
+                icdSuggestions.innerHTML = data.results.map(function(r, idx) {
+                    return '<div class="icd-suggestion" data-idx="' + idx + '" onclick="selectICD(' + idx + ')">' +
+                        '<strong dir="ltr">' + r.code + '</strong> — ' +
+                        '<span dir="ltr">' + r.name + '</span></div>';
+                }).join('');
+                window._icdResults = data.results;
+                icdSuggestions.style.display = 'block';
+            })
+            .catch(function() {
+                icdSuggestions.innerHTML = '<div style="padding:8px;text-align:center;color:#dc3545;font-size:12px;">Search failed. Try typing the code directly.</div>';
+            });
+    }, 250);
 });
 
 icdInput.addEventListener('blur', function() {
     setTimeout(function() { icdSuggestions.style.display = 'none'; }, 200);
 });
 
-function selectICD(code) {
-    icdInput.value = code;
+function selectICD(idx) {
+    var r = window._icdResults && window._icdResults[idx];
+    if (!r) return;
+    icdSelectedCode.value = r.code;
+    icdInput.value = r.code;
+    icdDesc.textContent = r.name;
+    icdDesc.style.color = '#0d9488';
     icdSuggestions.style.display = 'none';
 }
 </script>

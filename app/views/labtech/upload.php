@@ -17,7 +17,7 @@
             <td>الفئة:</td><td><?= e($order['category']) ?></td></tr>
             <tr><td>العينة:</td><td><span class="badge bg-info"><?= e($order['sample_type']) ?></span></td>
             <td>الطبيب:</td><td><?= e($order['doctor_name']) ?></td></tr>
-            <tr><td>تشخيص ICD:</td><td><?= e($order['diagnosis_icd'] ?: '-') ?></td>
+            <tr><td>ICD-10 Diagnosis:</td><td dir="ltr" class="text-end"><?= e($order['diagnosis_icd'] ?: '-') ?></td>
             <td>تاريخ الطلب:</td><td class="small"><?= formatDate($order['ordered_at'], true) ?></td></tr>
         </table>
     </div>

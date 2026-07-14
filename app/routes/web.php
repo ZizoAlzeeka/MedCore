@@ -192,6 +192,90 @@ $router->add('POST', '/profile', 'ProfileController@update');
 // ===== AJAX endpoints =====
 $router->ajax('GET',  '/ajax/tests/search', 'TestOrderController@ajaxSearchTests');
 
+// ===== AJAX: ICD-10 search via NLM Clinical Tables API =====
+// Returns English code + description (no Arabic — ICD-10 is an international standard)
+$router->ajax('GET', '/ajax/icd/search', function () {
+    $q = trim($_GET['q'] ?? '');
+    if (mb_strlen($q) < 2) {
+        return ['success' => true, 'results' => []];
+    }
+
+    // NLM Clinical Tables ICD-10-CM API (free, no key)
+    // https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?terms=...
+    // Response: [total, [codes...], null, [[description...], ...]]
+    $url = 'https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search?terms=' . urlencode($q) . '&max=15&cf=code,name';
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 8,
+        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        CURLOPT_USERAGENT => 'MedCore/1.0 (ICD-10 search)',
+    ]);
+    $raw = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    $results = [];
+    if ($raw && $httpCode === 200) {
+        $data = json_decode($raw, true);
+        // Format: [total, [codes], null, [[code, name], ...]]  OR  [total, [codes], null, [[name], ...]]
+        if (is_array($data) && count($data) >= 4 && is_array($data[3])) {
+            foreach ($data[3] as $row) {
+                if (is_array($row) && count($row) >= 2) {
+                    $results[] = [
+                        'code' => $row[0],
+                        'name' => $row[1],
+                    ];
+                } elseif (is_array($row) && count($row) >= 1) {
+                    $results[] = [
+                        'code' => $data[1][count($results)] ?? '',
+                        'name' => $row[0],
+                    ];
+                }
+            }
+        }
+    }
+
+    // Fallback: if API fails, use a small local set
+    if (empty($results)) {
+        $local = [
+            ['R10', 'Abdominal pain'],
+            ['R51', 'Headache'],
+            ['E11.9', 'Type 2 diabetes mellitus without complications'],
+            ['I10', 'Essential (primary) hypertension'],
+            ['J00', 'Acute nasopharyngitis [common cold]'],
+            ['J45.909', 'Unspecified asthma, uncomplicated'],
+            ['K21.9', 'Gastro-esophageal reflux disease without esophagitis'],
+            ['N39.0', 'Urinary tract infection, site not specified'],
+            ['M54.5', 'Low back pain'],
+            ['D50.9', 'Iron deficiency anemia, unspecified'],
+            ['E78.5', 'Hyperlipidemia, unspecified'],
+            ['R42', 'Dizziness and giddiness'],
+            ['R05', 'Cough'],
+            ['R50.9', 'Fever, unspecified'],
+            ['K59.0', 'Constipation'],
+            ['K52.9', 'Noninfective gastroenteritis and colitis, unspecified'],
+        ];
+        foreach ($local as $item) {
+            if (stripos($item[0], $q) !== false || stripos($item[1], $q) !== false) {
+                $results[] = ['code' => $item[0], 'name' => $item[1]];
+            }
+        }
+    }
+
+    Logger::info('ICD-10 search', [
+        'query' => $q,
+        'results_count' => count($results),
+        'api_http' => $httpCode,
+        'api_error' => $err ?: null,
+    ]);
+
+    return ['success' => true, 'results' => $results];
+});
+
 // ===== Public AJAX: LOINC search via NLM Clinical Tables API (admin/tests modal) =====
 $router->ajax('GET', '/ajax/loinc/search', function () {
     $q = trim($_GET['q'] ?? '');

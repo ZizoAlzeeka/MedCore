@@ -29,13 +29,13 @@
             <tr><td>التحليل:</td><td><span class="loinc-code"><?= e($order['loinc_code']) ?></span> <strong><?= e($order['name_ar']) ?></strong> (<?= e($order['name_en']) ?>)</td></tr>
             <tr><td>الفئة:</td><td><?= e($order['category']) ?></td></tr>
             <tr><td>نوع العينة:</td><td><?= e($order['sample_type']) ?></td></tr>
-            <tr><td>القيمة:</td><td class="fw-bold fs-5 text-purple"><?= e($order['result_value']) ?> <?= e($order['unit']) ?></td></tr>
-            <tr><td>النطاق الطبيعي:</td><td><?= e($order['normal_range']) ?></td></tr>
+            <tr><td>القيمة:</td><td class="fw-bold fs-5 text-purple" dir="ltr"><?= e($order['result_value']) ?> <?= e($order['unit']) ?></td></tr>
+            <tr><td>النطاق الطبيعي:</td><td dir="ltr"><?= e($order['normal_range']) ?></td></tr>
             <tr><td>العلم:</td><td><?= statusBadge($order['flag']) ?></td></tr>
             <tr><td>تاريخ التنفيذ:</td><td><?= formatDate($order['performed_at'], true) ?></td></tr>
             <tr><td>تاريخ الرفع:</td><td><?= formatDate($order['uploaded_at'], true) ?></td></tr>
             <tr><td>فني المختبر:</td><td><?= e($order['lab_tech_name']) ?></td></tr>
-            <tr><td>تشخيص الطبيب (ICD):</td><td><?= e($order['diagnosis_icd'] ?: '-') ?></td></tr>
+            <tr><td>ICD-10 Diagnosis:</td><td dir="ltr"><?= e($order['diagnosis_icd'] ?: '-') ?></td></tr>
         </table>
     </div>
 </div>
