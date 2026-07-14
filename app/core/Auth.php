@@ -51,12 +51,20 @@ class Auth
         $_SESSION['name'] = $user['full_name'];
         $_SESSION['unique_id'] = $user['unique_id'];
         self::$user = $user;
+        // ⚡ Update APCu cache for this user
+        if (function_exists('apcu_store')) {
+            apcu_store('user_' . $user['id'], $user, 30);
+        }
         Logger::audit('login', $user['id']);
     }
 
     public static function logout()
     {
         if (!empty($_SESSION['user_id'])) {
+            // ⚡ Clear APCu cache for this user
+            if (function_exists('apcu_delete')) {
+                apcu_delete('user_' . $_SESSION['user_id']);
+            }
             Logger::audit('logout', $_SESSION['user_id']);
         }
         session_destroy();

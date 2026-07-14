@@ -85,7 +85,7 @@ if (Env::get('APP_DEBUG', 'false') === 'true') {
 // To force a re-migration: delete database/.migrated
 //
 // ⚡ Force re-migration after financial fields removal — bump flag file name
-$migrationFlagFile = __DIR__ . '/database/.migrated_v2';
+$migrationFlagFile = __DIR__ . '/database/.migrated_v3';
 if (!file_exists($migrationFlagFile)) {
     try {
         $migrationMessages = AutoMigrator::runIfNeeded();

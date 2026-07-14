@@ -218,6 +218,11 @@ class AdminController extends Controller
     {
         Auth::csrfVerify();
         Database::query("UPDATE users SET is_active = 1 - is_active WHERE id = ?", [$id]);
+        // ⚡ Clear APCu cache for this user + users list cache
+        if (function_exists('apcu_delete')) {
+            apcu_delete('user_' . $id);
+            apcu_delete('admin_users_page');
+        }
         flash('success', 'تم تغيير حالة الحساب');
         redirect('/admin/users');
     }
