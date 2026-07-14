@@ -1642,31 +1642,31 @@ body.modal-open .conn-status {
    ============================================================ */
 .medcal {
     background: #fff;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
 }
 .medcal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    padding: 10px 14px;
     background: linear-gradient(135deg, #0d9488, #0891b2);
     color: #fff;
 }
 .medcal-title {
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 14px;
+    font-weight: 700;
 }
 .medcal-nav-btn {
     background: rgba(255,255,255,0.15);
     border: none;
     color: #fff;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 13px;
     transition: all 0.15s;
     display: flex;
     align-items: center;
@@ -1678,31 +1678,30 @@ body.modal-open .conn-status {
 .medcal-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    padding: 12px;
+    gap: 1px;
+    padding: 8px;
 }
 .medcal-day-name {
     text-align: center;
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: #636E72;
-    padding: 8px 4px;
+    padding: 4px 2px;
     text-transform: uppercase;
 }
 .medcal-day {
-    aspect-ratio: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
+    border-radius: 7px;
     cursor: pointer;
     transition: all 0.15s;
     position: relative;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: #2D3436;
-    min-height: 50px;
+    height: 34px;
 }
 .medcal-day:hover:not(.empty):not(.past) {
     background: rgba(13,148,136,0.08);
@@ -1718,7 +1717,7 @@ body.modal-open .conn-status {
 }
 .medcal-day.today {
     background: rgba(13,148,136,0.1);
-    border: 2px solid #0d9488;
+    border: 1.5px solid #0d9488;
     color: #0d9488;
 }
 .medcal-day.selected {
@@ -1734,14 +1733,14 @@ body.modal-open .conn-status {
 }
 .medcal-badge {
     position: absolute;
-    top: 4px;
-    left: 4px;
+    top: 2px;
+    left: 2px;
     background: #34d399;
     color: #fff;
-    font-size: 9px;
+    font-size: 8px;
     font-weight: 700;
-    width: 18px;
-    height: 18px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     display: flex;
     align-items: center;
