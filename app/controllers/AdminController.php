@@ -67,17 +67,40 @@ class AdminController extends Controller
     // ===== Users =====
     public function users()
     {
+        // ⚡ Cache users list + departments in APCu for 30s (no filters = cacheable)
         $role = $_GET['role'] ?? '';
         $q = trim($_GET['q'] ?? '');
-        $sql = "SELECT * FROM users WHERE 1=1";
-        $params = [];
-        if ($role) { $sql .= " AND role = ?"; $params[] = $role; }
-        if ($q) {
-            $sql .= " AND (full_name LIKE ? OR email LIKE ? OR unique_id LIKE ? OR phone LIKE ?)";
-            $qq = "%$q%"; $params = array_merge($params, [$qq, $qq, $qq, $qq]);
+        $cacheKey = 'admin_users_page';
+
+        $users = null;
+        $departments = null;
+
+        // Only cache when no filters (default view) — filtered queries are cheap client-side
+        if (!$role && !$q && function_exists('apcu_fetch')) {
+            $cached = apcu_fetch($cacheKey);
+            if ($cached !== false && $cached !== null) {
+                $users = $cached['users'];
+                $departments = $cached['departments'];
+            }
         }
-        $sql .= " ORDER BY created_at DESC LIMIT 200";
-        $users = Database::fetchAll($sql, $params);
+
+        if ($users === null) {
+            $sql = "SELECT * FROM users WHERE 1=1";
+            $params = [];
+            if ($role) { $sql .= " AND role = ?"; $params[] = $role; }
+            if ($q) {
+                $sql .= " AND (full_name LIKE ? OR email LIKE ? OR unique_id LIKE ? OR phone LIKE ?)";
+                $qq = "%$q%"; $params = array_merge($params, [$qq, $qq, $qq, $qq]);
+            }
+            $sql .= " ORDER BY created_at DESC LIMIT 200";
+            $users = Database::fetchAll($sql, $params);
+            $departments = Database::fetchAll("SELECT * FROM departments ORDER BY name_ar");
+
+            if (!$role && !$q && function_exists('apcu_store')) {
+                apcu_store($cacheKey, ['users' => $users, 'departments' => $departments], 30);
+            }
+        }
+
         $title = 'إدارة المستخدمين';
         viewWithLayout('admin/users', compact('users', 'role', 'q', 'title'));
     }
