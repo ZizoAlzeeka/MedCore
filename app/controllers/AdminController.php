@@ -8,18 +8,43 @@ class AdminController extends Controller
 
     public function dashboard()
     {
-        $userModel = new User();
+        // ⚡ Performance: single query to get ALL user counts by role.
+        // Was: 4 separate queries (one per role). Now: 1 query.
+        $roleCounts = Database::fetchAll(
+            "SELECT role, COUNT(*) AS cnt FROM users GROUP BY role"
+        );
+        $roleMap = [];
+        foreach ($roleCounts as $rc) {
+            $roleMap[$rc['role']] = (int) $rc['cnt'];
+        }
+
+        // ⚡ Combine remaining count queries into ONE using subqueries.
+        // Was: 4 separate queries. Now: 1 query with 4 subqueries.
+        $counts = Database::fetch(
+            "SELECT
+                (SELECT COUNT(*) FROM departments) AS departments,
+                (SELECT COUNT(*) FROM tests_catalog) AS tests,
+                (SELECT COUNT(*) FROM test_orders WHERE DATE(ordered_at) = CURDATE()) AS orders_today,
+                (SELECT COUNT(*) FROM appointments WHERE DATE(appt_date) = CURDATE() AND status='booked') AS appointments_today,
+                (SELECT COUNT(*) FROM duplicate_alerts) AS dup_total,
+                (SELECT COUNT(*) FROM duplicate_alerts WHERE doctor_decision IN ('cancel','use_previous')) AS dup_prevented
+            "
+        );
+
         $stats = [
-            'doctors' => $userModel->countByRole('doctor'),
-            'patients' => $userModel->countByRole('patient'),
-            'reception' => $userModel->countByRole('reception'),
-            'lab_tech' => $userModel->countByRole('lab_tech'),
-            'departments' => (int) Database::fetchColumn("SELECT COUNT(*) FROM departments"),
-            'tests' => (int) Database::fetchColumn("SELECT COUNT(*) FROM tests_catalog"),
-            'orders_today' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE DATE(ordered_at) = CURDATE()"),
-            'appointments_today' => (int) Database::fetchColumn("SELECT COUNT(*) FROM appointments WHERE DATE(appt_date) = CURDATE() AND status='booked'"),
+            'doctors' => $roleMap['doctor'] ?? 0,
+            'patients' => $roleMap['patient'] ?? 0,
+            'reception' => $roleMap['reception'] ?? 0,
+            'lab_tech' => $roleMap['lab_tech'] ?? 0,
+            'departments' => (int) $counts['departments'],
+            'tests' => (int) $counts['tests'],
+            'orders_today' => (int) $counts['orders_today'],
+            'appointments_today' => (int) $counts['appointments_today'],
         ];
-        $dupStats = (new DuplicateAlert())->stats();
+        $dupStats = [
+            'total' => (int) $counts['dup_total'],
+            'prevented' => (int) $counts['dup_prevented'],
+        ];
         $recentAlerts = (new DuplicateAlert())->recent(8);
         $recentUsers = Database::fetchAll("SELECT * FROM users ORDER BY id DESC LIMIT 6");
 
@@ -257,14 +282,31 @@ class AdminController extends Controller
     // ===== Reports =====
     public function reports()
     {
-        $dupStats = (new DuplicateAlert())->stats();
-        $recentAlerts = (new DuplicateAlert())->recent(50);
+        // ⚡ Performance: combine multiple count queries into ONE.
+        // Was: 6 separate queries (4 for ordersByStatus + 2 for dupStats).
+        // Now: 1 query with subqueries.
+        $counts = Database::fetch(
+            "SELECT
+                (SELECT COUNT(*) FROM test_orders WHERE status='ordered') AS ordered,
+                (SELECT COUNT(*) FROM test_orders WHERE status='result_uploaded') AS result_uploaded,
+                (SELECT COUNT(*) FROM test_orders WHERE status='cancelled') AS cancelled,
+                (SELECT COUNT(*) FROM test_orders WHERE status='duplicate_skipped') AS duplicate_skipped,
+                (SELECT COUNT(*) FROM duplicate_alerts) AS dup_total,
+                (SELECT COUNT(*) FROM duplicate_alerts WHERE doctor_decision IN ('cancel','use_previous')) AS dup_prevented
+            "
+        );
         $ordersByStatus = [
-            'ordered' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE status='ordered'"),
-            'result_uploaded' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE status='result_uploaded'"),
-            'cancelled' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE status='cancelled'"),
-            'duplicate_skipped' => (int) Database::fetchColumn("SELECT COUNT(*) FROM test_orders WHERE status='duplicate_skipped'"),
+            'ordered' => (int) $counts['ordered'],
+            'result_uploaded' => (int) $counts['result_uploaded'],
+            'cancelled' => (int) $counts['cancelled'],
+            'duplicate_skipped' => (int) $counts['duplicate_skipped'],
         ];
+        $dupStats = [
+            'total' => (int) $counts['dup_total'],
+            'prevented' => (int) $counts['dup_prevented'],
+        ];
+
+        $recentAlerts = (new DuplicateAlert())->recent(50);
         $deptStats = Database::fetchAll(
             "SELECT dep.name_ar, COUNT(d.id) AS doctors_count
              FROM departments dep
@@ -279,7 +321,7 @@ class AdminController extends Controller
              GROUP BY d.id ORDER BY orders_count DESC LIMIT 5"
         );
 
-        // ⚡ NEW: Tests by category
+        // Tests by category
         $testsByCategory = Database::fetchAll(
             "SELECT category, COUNT(*) AS cnt
              FROM tests_catalog
@@ -288,7 +330,7 @@ class AdminController extends Controller
              ORDER BY cnt DESC LIMIT 10"
         );
 
-        // Orders by department (which department orders most tests)
+        // Orders by department
         $ordersByDept = Database::fetchAll(
             "SELECT dep.name_ar, COUNT(o.id) AS orders_count
              FROM test_orders o

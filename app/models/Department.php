@@ -5,19 +5,41 @@ class Department extends Model
 
     public function allWithDoctors()
     {
-        $depts = Database::fetchAll("SELECT * FROM departments ORDER BY name_ar");
-        foreach ($depts as &$d) {
-            $d['doctors'] = Database::fetchAll(
-                "SELECT u.id, u.full_name, d.specialty
-                 FROM users u
-                 JOIN doctors d ON u.id = d.user_id
-                 WHERE d.department_id = ? AND u.is_active = 1
-                 ORDER BY u.full_name",
-                [$d['id']]
-            );
-            $d['doctors_count'] = count($d['doctors']);
+        // ⚡ Single query with LEFT JOIN + GROUP_CONCAT — avoids N+1 queries.
+        // Was: 1 + N queries (N = number of departments). Now: 1 query total.
+        $sql = "SELECT dep.*,
+                    COUNT(d.id) AS doctors_count,
+                    GROUP_CONCAT(
+                        DISTINCT CONCAT_WS('|', u.id, u.full_name, d.specialty)
+                        SEPARATOR ';;'
+                    ) AS doctors_csv
+                FROM departments dep
+                LEFT JOIN doctors d ON dep.id = d.department_id
+                LEFT JOIN users u ON d.user_id = u.id AND u.is_active = 1
+                GROUP BY dep.id
+                ORDER BY dep.name_ar";
+        $rows = Database::fetchAll($sql);
+
+        // Parse the GROUP_CONCAT result into PHP array
+        foreach ($rows as &$d) {
+            $d['doctors'] = [];
+            if (!empty($d['doctors_csv'])) {
+                $parts = explode(';;', $d['doctors_csv']);
+                foreach ($parts as $p) {
+                    if (empty($p)) continue;
+                    $fields = explode('|', $p);
+                    if (count($fields) >= 2) {
+                        $d['doctors'][] = [
+                            'id' => $fields[0],
+                            'full_name' => $fields[1],
+                            'specialty' => $fields[2] ?? null,
+                        ];
+                    }
+                }
+            }
+            unset($d['doctors_csv']);
         }
-        return $depts;
+        return $rows;
     }
 
     public function findWithDoctors($id)
