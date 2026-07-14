@@ -2,33 +2,41 @@
 /** App layout — sidebar + topbar (fixed) + main content (dynamic) */
 $appName = Env::get('APP_NAME', 'منصة كشف التحاليل المكررة');
 $role = Auth::role();
-$user = Auth::user();
-$doctor = null;
-if ($role === 'doctor') {
-    $doctor = Database::fetch("SELECT d.*, dep.name_ar AS dept_name FROM doctors d LEFT JOIN departments dep ON d.department_id = dep.id WHERE d.user_id = ?", [Auth::id()]);
-}
 
-// ⚡ Performance: cache notification count in APCu for 15 seconds per user
-// to avoid hitting the DB on every page load. The dropdown still fetches
-// the actual list, but the badge count is cached.
-$notifCount = 0;
-$notifCacheKey = 'notif_count_' . Auth::id();
-if (function_exists('apcu_fetch') && apcu_exists($notifCacheKey)) {
-    $notifCount = (int) apcu_fetch($notifCacheKey);
-} else {
-    try {
-        $notifCount = (int) Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
-        if (function_exists('apcu_store')) {
-            apcu_store($notifCacheKey, $notifCount, 15);
-        }
-    } catch (Throwable $e) {
-        $notifCount = 0;
-    }
-}
-$recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
-
-// Determine if AJAX request
+// Determine if AJAX request EARLY — skip unnecessary DB queries for SPA nav
 $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+
+// ⚡ Performance: in AJAX mode (SPA navigation), the sidebar/topbar are NOT
+// re-rendered — only main-content is swapped. So skip ALL layout-only DB
+// queries: Auth::user(), doctor info, notification count, recent notifs.
+// This saves 4-5 DB round-trips on EVERY SPA navigation (huge speedup).
+$user = null;
+$doctor = null;
+$notifCount = 0;
+$recentNotifs = [];
+
+if (!$isAjax) {
+    $user = Auth::user();  // DB query — only needed for sidebar/topbar
+    if ($role === 'doctor') {
+        $doctor = Database::fetch("SELECT d.*, dep.name_ar AS dept_name FROM doctors d LEFT JOIN departments dep ON d.department_id = dep.id WHERE d.user_id = ?", [Auth::id()]);
+    }
+
+    // ⚡ Cache notification count in APCu for 15 seconds per user
+    $notifCacheKey = 'notif_count_' . Auth::id();
+    if (function_exists('apcu_fetch') && apcu_exists($notifCacheKey)) {
+        $notifCount = (int) apcu_fetch($notifCacheKey);
+    } else {
+        try {
+            $notifCount = (int) Database::fetchColumn("SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = 0", [Auth::id()]);
+            if (function_exists('apcu_store')) {
+                apcu_store($notifCacheKey, $notifCount, 15);
+            }
+        } catch (Throwable $e) {
+            $notifCount = 0;
+        }
+    }
+    $recentNotifs = Database::fetchAll("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 5", [Auth::id()]);
+}
 
 // Sidebar menu per role
 $menu = [];

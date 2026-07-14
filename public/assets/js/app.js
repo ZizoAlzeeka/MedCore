@@ -64,19 +64,11 @@ function isSpaLink(el) {
 function showMainLoader() {
     const main = document.getElementById('main-content');
     if (!main) return;
-    // IMMEDIATELY replace main-content with skeleton (no fade, no ghosting)
+    // ⚡ Don't replace content immediately — only show a subtle top bar.
+    // Replacing content with skeleton on every nav causes visual flicker
+    // and makes the app feel slow. Keep existing content visible until
+    // new content arrives (feels instant when cached, smooth when not).
     main.classList.add('spa-loading');
-    main.innerHTML = `
-        <div class="spa-skeleton-inside">
-            <div class="spa-skel-line" style="width:40%"></div>
-            <div class="spa-skel-line" style="width:75%"></div>
-            <div class="spa-skel-line" style="width:60%"></div>
-            <div class="spa-skel-block" style="height:60px"></div>
-            <div class="spa-skel-block" style="height:380px"></div>
-        </div>
-    `;
-    main.scrollTop = 0;
-    // ⚡ Show top loading bar
     showPageLoaderBar();
 }
 
@@ -172,13 +164,14 @@ function setActiveNav(urlPath) {
 
 /**
  * Navigate to a URL using AJAX — fetches only main-content.
- * ⚡ Performance: added timeout + prefetch cache + retry-once on failure
+ * ⚡ Robust: no AbortController (was causing AbortError), no timeout that
+ * kills legitimate slow requests. Uses a per-request token to ignore
+ * stale responses if user navigates again while a request is in-flight.
  */
 function loadPage(url, pushState = true) {
     if (!url || url === '#') return;
-    if (SPA.isNavigating) return;
 
-    // ⚡ If page is already cached in SPA.cache, render immediately (no fetch)
+    // ⚡ If page is already cached, render immediately (no fetch needed)
     if (SPA.cache.has(url)) {
         const cached = SPA.cache.get(url);
         if (cached.expires > Date.now()) {
@@ -188,31 +181,33 @@ function loadPage(url, pushState = true) {
         SPA.cache.delete(url);
     }
 
+    // ⚡ Cancel any in-flight request by bumping the token.
+    // Old .then() handlers will see their token is stale and silently exit.
+    SPA.navToken = (SPA.navToken || 0) + 1;
+    const myToken = SPA.navToken;
     SPA.isNavigating = true;
     showMainLoader();
-
-    // ⚡ Timeout after 8 seconds (was hanging indefinitely on slow networks)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     fetch(url, {
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin',
-        signal: controller.signal,
     })
     .then(r => {
-        clearTimeout(timeoutId);
+        // Stale response — another navigation happened, ignore silently
+        if (myToken !== SPA.navToken) return null;
         if (!r.ok) throw new Error('HTTP ' + r.status);
         // Detect redirect to login (session expired)
         const finalUrl = r.url || url;
         if (finalUrl.includes('/login') && !url.includes('/login')) {
             window.location.href = finalUrl;
-            return '';
+            return null;
         }
         return r.text();
     })
     .then(html => {
-        if (!html) { SPA.isNavigating = false; hideMainLoader(); return; }
+        // Stale or empty — do nothing
+        if (html === null || html === undefined) return;
+        if (myToken !== SPA.navToken) return;
 
         // Parse response — first <script data-ajax-meta> contains metadata
         const tmp = document.createElement('div');
@@ -221,30 +216,40 @@ function loadPage(url, pushState = true) {
         let meta = null;
         if (metaScript) {
             try { meta = JSON.parse(metaScript.textContent); } catch (e) {}
-            metaScript.remove();
         }
 
-        // ⚡ Cache the parsed HTML for 30 seconds (so back-button / repeated
-        // clicks on the same nav item don't re-fetch). Invalidate on writes
-        // via SPA.cache.clear() — called from form submissions.
+        // ⚡ Cache for 60 seconds — back-button / repeated clicks are instant
         SPA.cache.set(url, {
             html: html,
             meta: meta,
-            expires: Date.now() + 30000,
+            expires: Date.now() + 60000,
         });
 
         renderPageHtml(html, url, pushState, meta);
     })
     .catch(err => {
-        clearTimeout(timeoutId);
-        console.error('SPA nav error:', err);
+        // Stale request — don't show error, another nav is in progress
+        if (myToken !== SPA.navToken) return;
+
+        // ⚡ Network errors only — don't spam console for every failed nav
+        console.warn('SPA nav failed:', err.message);
+
         const main = document.getElementById('main-content');
         if (main) {
-            main.innerHTML = '<div class="alert alert-danger m-3"><i class="bi bi-exclamation-triangle"></i> فشل تحميل الصفحة: ' + err.message + '<br><a href="' + url + '" class="alert-link">إعادة المحاولة</a></div>';
+            // ⚡ Friendlier error with auto-retry
+            main.innerHTML = '<div class="alert alert-warning m-3">' +
+                '<i class="bi bi-exclamation-triangle"></i> ' +
+                'تعذّر تحميل الصفحة. جاري إعادة المحاولة...' +
+                '</div>';
+            // Auto-retry once after 1 second
+            setTimeout(() => {
+                if (myToken === SPA.navToken) {
+                    loadPage(url, pushState);
+                }
+            }, 1000);
         }
         hideMainLoader();
         SPA.isNavigating = false;
-        // ⚡ Show "connection error" status
         showConnStatus('error');
     });
 }
@@ -474,48 +479,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             target = target.parentElement;
         }
-    });
-
-    // ⚡ Performance: prefetch on hover — when user hovers a SPA link for
-    // >100ms, fetch the page in the background so the click is instant.
-    let hoverTimer = null;
-    document.body.addEventListener('mouseover', function(e) {
-        let target = e.target;
-        while (target && target !== document.body) {
-            if (target.tagName === 'A' && isSpaLink(target)) {
-                const href = target.getAttribute('href');
-                if (href && !SPA.cache.has(href)) {
-                    clearTimeout(hoverTimer);
-                    hoverTimer = setTimeout(() => {
-                        fetch(href, {
-                            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                            credentials: 'same-origin',
-                        })
-                        .then(r => r.text())
-                        .then(html => {
-                            const tmp = document.createElement('div');
-                            tmp.innerHTML = html;
-                            const metaScript = tmp.querySelector('script[data-ajax-meta]');
-                            let meta = null;
-                            if (metaScript) {
-                                try { meta = JSON.parse(metaScript.textContent); } catch (e) {}
-                            }
-                            SPA.cache.set(href, {
-                                html: html,
-                                meta: meta,
-                                expires: Date.now() + 30000,
-                            });
-                        })
-                        .catch(() => {});
-                    }, 100);
-                }
-                return;
-            }
-            target = target.parentElement;
-        }
-    });
-    document.body.addEventListener('mouseout', function() {
-        clearTimeout(hoverTimer);
     });
 
     // Live update notification count every 60s
