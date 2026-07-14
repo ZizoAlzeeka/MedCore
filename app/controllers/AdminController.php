@@ -102,7 +102,7 @@ class AdminController extends Controller
         }
 
         $title = 'إدارة المستخدمين';
-        viewWithLayout('admin/users', compact('users', 'role', 'q', 'title'));
+        viewWithLayout('admin/users', compact('users', 'departments', 'role', 'q', 'title'));
     }
 
     public function createUser()
@@ -220,7 +220,18 @@ class AdminController extends Controller
     // ===== Departments =====
     public function departments()
     {
-        $depts = (new Department())->allWithDoctors();
+        // ⚡ Cache departments list for 30s
+        $cacheKey = 'admin_departments';
+        $depts = null;
+        if (function_exists('apcu_fetch')) {
+            $depts = apcu_fetch($cacheKey);
+        }
+        if ($depts === false || $depts === null) {
+            $depts = (new Department())->allWithDoctors();
+            if (function_exists('apcu_store')) {
+                apcu_store($cacheKey, $depts, 30);
+            }
+        }
         $title = 'الأقسام الطبية';
         viewWithLayout('admin/departments', compact('depts', 'title'));
     }
@@ -263,14 +274,24 @@ class AdminController extends Controller
     public function testsCatalog()
     {
         $q = trim($_GET['q'] ?? '');
-        if ($q) {
-            $qq = "%$q%";
-            $tests = Database::fetchAll(
-                "SELECT * FROM tests_catalog WHERE name_ar LIKE ? OR name_en LIKE ? OR loinc_code LIKE ? OR category LIKE ? ORDER BY name_ar",
-                [$qq, $qq, $qq, $qq]
-            );
-        } else {
-            $tests = Database::fetchAll("SELECT * FROM tests_catalog ORDER BY name_ar");
+        // ⚡ Cache full tests catalog for 60s (337 tests — expensive query)
+        $tests = null;
+        if (!$q && function_exists('apcu_fetch')) {
+            $tests = apcu_fetch('admin_tests_catalog');
+        }
+        if ($tests === false || $tests === null) {
+            if ($q) {
+                $qq = "%$q%";
+                $tests = Database::fetchAll(
+                    "SELECT * FROM tests_catalog WHERE name_ar LIKE ? OR name_en LIKE ? OR loinc_code LIKE ? OR category LIKE ? ORDER BY name_ar",
+                    [$qq, $qq, $qq, $qq]
+                );
+            } else {
+                $tests = Database::fetchAll("SELECT * FROM tests_catalog ORDER BY name_ar");
+            }
+            if (!$q && function_exists('apcu_store')) {
+                apcu_store('admin_tests_catalog', $tests, 60);
+            }
         }
         $title = 'كتالوج التحاليل (LOINC)';
         viewWithLayout('admin/tests', compact('tests', 'q', 'title'));
