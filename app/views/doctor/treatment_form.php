@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <div class="page-header">
     <div>
         <h2 class="page-title"><i class="bi bi-capsules"></i> <?= e($title) ?></h2>
-        <div class="page-subtitle">المريض: <strong><?= e($order['patient_name']) ?></strong> — التحليل: <span class="loinc-code"><?= e($order['loinc_code']) ?></span> <?= e($order['name_ar']) ?></div>
+        <div class="page-subtitle">المريض: <strong><?= e($order['patient_name']) ?></strong> — التحليل: <span class="loinc-code" dir="ltr"><?= e($order['loinc_code']) ?></span> <?= e($order['name_ar']) ?></div>
     </div>
     <a href="<?= url('/doctor/patients/' . $order['patient_id']) ?>" class="btn btn-secondary btn-sm"><i class="bi bi-arrow-right"></i> رجوع</a>
 </div>
@@ -21,8 +21,8 @@ document.addEventListener("DOMContentLoaded", function() {
     <div class="card-header"><i class="bi bi-clipboard2-data text-purple"></i> نتيجة التحليل</div>
     <div class="card-body">
         <table class="table table-sm">
-            <tr><td>القيمة:</td><td class="fw-bold"><?= e($order['result_value']) ?> <?= e($order['unit']) ?></td>
-            <td>النطاق الطبيعي:</td><td><?= e($order['normal_range']) ?></td></tr>
+            <tr><td>القيمة:</td><td dir="ltr" style="text-align:right;" class="fw-bold"><?= e($order['result_value']) ?> <?= e($order['unit']) ?></td>
+            <td>النطاق الطبيعي:</td><td dir="ltr" style="text-align:right;"><?= e($order['normal_range']) ?></td></tr>
             <tr><td>العلم:</td><td><?= statusBadge($order['flag']) ?></td>
             <td>تاريخ التنفيذ:</td><td><?= formatDate($order['performed_at'], true) ?></td></tr>
         </table>

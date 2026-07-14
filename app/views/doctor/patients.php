@@ -35,9 +35,9 @@
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
             <?php foreach ($referred as $p): ?>
-                <a href="<?= url('/doctor/patients/' . $p['id']) ?>" class="list-group-item list-group-item-action d-flex justify-content-between">
+                <a href="<?= url('/doctor/patients/' . $p['id']) ?>" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                     <div><span class="fw-bold"><?= e($p['full_name']) ?></span> <span class="uid-code"><?= e($p['unique_id']) ?></span></div>
-                    <small class="text-muted"><?= e($p['phone']) ?></small>
+                    <small class="text-muted" dir="ltr"><?= e($p['phone']) ?></small>
                 </a>
             <?php endforeach; ?>
         </div>

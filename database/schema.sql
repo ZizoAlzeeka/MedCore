@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS `treatment_plans` (
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
-  `type` ENUM('result_ready','treatment_added','appointment_booked','duplicate_alert','general') NOT NULL DEFAULT 'general',
+  `type` ENUM('result_ready','treatment_added','appointment_booked','duplicate_alert','referral','general') NOT NULL DEFAULT 'general',
   `title` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
   `related_id` INT UNSIGNED DEFAULT NULL,

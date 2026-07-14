@@ -14,8 +14,8 @@
                             <td><?= $o['id'] ?></td>
                             <td><span class="loinc-code"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
                             <td><?= statusBadge($o['status']) ?></td>
-                            <td class="fw-bold"><?= $o['result_value'] ? e($o['result_value']) : '-' ?></td>
-                            <td class="small"><?= e($o['unit']) ?></td>
+                            <td class="fw-bold" dir="ltr" style="text-align:right;"><?= $o['result_value'] ? e($o['result_value']) : '-' ?></td>
+                            <td class="small" dir="ltr" style="text-align:right;"><?= e($o['unit']) ?></td>
                             <td><?= $o['flag'] ? statusBadge($o['flag']) : '-' ?></td>
                             <td class="small text-muted"><?= formatDate($o['ordered_at']) ?></td>
                             <td>

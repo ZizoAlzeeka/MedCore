@@ -168,7 +168,7 @@ CREATE INDEX IF NOT EXISTS `idx_tp_doctor` ON `treatment_plans`(`doctor_id`);
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `user_id` INTEGER NOT NULL,
-  `type` TEXT NOT NULL DEFAULT 'general' CHECK (type IN ('result_ready','treatment_added','appointment_booked','duplicate_alert','general')),
+  `type` TEXT NOT NULL DEFAULT 'general' CHECK (type IN ('result_ready','treatment_added','appointment_booked','duplicate_alert','referral','general')),
   `title` TEXT NOT NULL,
   `message` TEXT NOT NULL,
   `related_id` INTEGER,

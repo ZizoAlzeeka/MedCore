@@ -233,11 +233,11 @@ function viewResult(orderId) {
     var html = '<table class="table table-sm">' +
         '<tr><td style="width:30%" class="text-muted">المريض:</td><td class="fw-bold">' + (o.patient_name||'') + ' <span class="uid-code">' + (o.patient_uid||'') + '</span></td></tr>' +
         '<tr><td class="text-muted">الهاتف:</td><td dir="ltr">' + (o.phone||'-') + '</td></tr>' +
-        '<tr><td class="text-muted">التحليل:</td><td><span class="loinc-code">' + (o.loinc_code||'') + '</span> ' + (o.name_ar||'') + '</td></tr>' +
+        '<tr><td class="text-muted">التحليل:</td><td><span class="loinc-code" dir="ltr">' + (o.loinc_code||'') + '</span> ' + (o.name_ar||'') + '</td></tr>' +
         '<tr><td class="text-muted">نوع العينة:</td><td>' + (o.sample_type||'-') + '</td></tr>' +
         '<tr><td class="text-muted">الطبيب:</td><td>' + (o.doctor_name||'-') + '</td></tr>' +
-        '<tr><td class="text-muted">قيمة النتيجة:</td><td class="fw-bold fs-5 text-purple">' + (o.result_value||'-') + ' ' + (o.unit||'') + '</td></tr>' +
-        '<tr><td class="text-muted">النطاق الطبيعي:</td><td>' + (o.normal_range||'-') + '</td></tr>' +
+        '<tr><td class="text-muted">قيمة النتيجة:</td><td dir="ltr" style="text-align:right;" class="fw-bold fs-5 text-purple">' + (o.result_value||'-') + ' ' + (o.unit||'') + '</td></tr>' +
+        '<tr><td class="text-muted">النطاق الطبيعي:</td><td dir="ltr" style="text-align:right;">' + (o.normal_range||'-') + '</td></tr>' +
         '<tr><td class="text-muted">العلم:</td><td><span class="badge ' + flagClass + '">' + flagLabel + '</span></td></tr>' +
         '<tr><td class="text-muted">تاريخ التنفيذ:</td><td>' + (o.performed_at||'-') + '</td></tr>' +
         '<tr><td class="text-muted">تاريخ الرفع:</td><td>' + (o.uploaded_at||'-') + '</td></tr>' +
@@ -278,11 +278,11 @@ function openPrintWindow(o) {
         '<table class="table table-sm table-bordered">' +
         '<tr><td style="width:30%" class="text-muted">المريض:</td><td class="fw-bold">' + (o.patient_name||'') + ' <span class="uid-code">' + (o.patient_uid||'') + '</span></td></tr>' +
         '<tr><td class="text-muted">الهاتف:</td><td dir="ltr">' + (o.phone||'-') + '</td></tr>' +
-        '<tr><td class="text-muted">التحليل:</td><td><span class="loinc-code">' + (o.loinc_code||'') + '</span> ' + (o.name_ar||'') + '</td></tr>' +
+        '<tr><td class="text-muted">التحليل:</td><td><span class="loinc-code" dir="ltr">' + (o.loinc_code||'') + '</span> ' + (o.name_ar||'') + '</td></tr>' +
         '<tr><td class="text-muted">نوع العينة:</td><td>' + (o.sample_type||'-') + '</td></tr>' +
         '<tr><td class="text-muted">الطبيب:</td><td>' + (o.doctor_name||'-') + '</td></tr>' +
-        '<tr><td class="text-muted">قيمة النتيجة:</td><td class="fw-bold fs-5" style="color:#6C63FF;">' + (o.result_value||'-') + ' ' + (o.unit||'') + '</td></tr>' +
-        '<tr><td class="text-muted">النطاق الطبيعي:</td><td>' + (o.normal_range||'-') + '</td></tr>' +
+        '<tr><td class="text-muted">قيمة النتيجة:</td><td dir="ltr" style="text-align:right;color:#6C63FF;" class="fw-bold fs-5">' + (o.result_value||'-') + ' ' + (o.unit||'') + '</td></tr>' +
+        '<tr><td class="text-muted">النطاق الطبيعي:</td><td dir="ltr" style="text-align:right;">' + (o.normal_range||'-') + '</td></tr>' +
         '<tr><td class="text-muted">العلم:</td><td>' + flagLabel + '</td></tr>' +
         '<tr><td class="text-muted">تاريخ التنفيذ:</td><td>' + (o.performed_at||'-') + '</td></tr>' +
         '<tr><td class="text-muted">تاريخ الرفع:</td><td>' + (o.uploaded_at||'-') + '</td></tr>' +

@@ -48,9 +48,9 @@
                         <tbody>
                             <?php foreach ($recentOrders as $o): ?>
                                 <tr>
-                                    <td><span class="loinc-code"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
+                                    <td><span class="loinc-code" dir="ltr"><?= e($o['loinc_code']) ?></span> <?= e($o['name_ar']) ?></td>
                                     <td><?= statusBadge($o['status']) ?></td>
-                                    <td class="small"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
+                                    <td class="small" dir="ltr" style="text-align:right;"><?= $o['result_value'] ? e($o['result_value']) . ' ' . e($o['unit']) : '-' ?></td>
                                     <td class="small text-muted"><?= formatDate($o['ordered_at']) ?></td>
                                 </tr>
                             <?php endforeach; ?>
@@ -67,7 +67,7 @@
     <!-- Latest treatment -->
     <div class="col-lg-5">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-capsules text-pink"></i> آخر خطة علاج</div>
+            <div class="card-header"><i class="bi bi-prescription2 text-pink"></i> آخر خطة علاج</div>
             <div class="card-body">
                 <?php if ($latestTreatment): ?>
                     <h6 class="text-purple fw-bold"><?= e($latestTreatment['treatment_name']) ?></h6>

@@ -24,7 +24,7 @@ class User extends Model
     public function doctors()
     {
         return Database::fetchAll(
-            "SELECT u.*, d.department_id, d.specialty, d.license_no, dep.name_ar AS department_name
+            "SELECT u.*, d.id AS doctor_id, d.department_id, d.specialty, d.license_no, dep.name_ar AS department_name
              FROM users u
              JOIN doctors d ON u.id = d.user_id
              LEFT JOIN departments dep ON d.department_id = dep.id
@@ -36,7 +36,7 @@ class User extends Model
     public function doctorsByDepartment($deptId)
     {
         return Database::fetchAll(
-            "SELECT u.*, d.specialty
+            "SELECT u.*, d.id AS doctor_id, d.specialty
              FROM users u
              JOIN doctors d ON u.id = d.user_id
              WHERE u.role = 'doctor' AND u.is_active = 1 AND d.department_id = ?

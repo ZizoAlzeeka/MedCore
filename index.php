@@ -102,54 +102,6 @@ if (!file_exists($migrationFlagFile)) {
             }
         }
 
-        // ⚡ Ensure seed passwords are correct on every cold start.
-        // This fixes the "passwords change on every deploy" issue — we verify
-        // that admin@platform.com can login with admin123, and if NOT, we
-        // reset ALL seed passwords. This runs ONCE per container boot (inside
-        // the migration flag check), not on every request.
-        try {
-            $adminUser = Database::fetch("SELECT password_hash FROM users WHERE email = 'admin@platform.com' LIMIT 1");
-            if ($adminUser && !password_verify('admin123', $adminUser['password_hash'])) {
-                // Password doesn't match — reset all seed passwords
-                $seedPasswords = [
-                    'admin@platform.com' => 'admin123',
-                    'doctor1@platform.com' => 'doctor123',
-                    'doctor2@platform.com' => 'doctor123',
-                    'doctor3@platform.com' => 'doctor123',
-                    'doctor4@platform.com' => 'doctor123',
-                    'doctor5@platform.com' => 'doctor123',
-                    'doctor6@platform.com' => 'doctor123',
-                    'doctor7@platform.com' => 'doctor123',
-                    'doctor8@platform.com' => 'doctor123',
-                    'doctor9@platform.com' => 'doctor123',
-                    'doctor10@platform.com' => 'doctor123',
-                    'reception1@platform.com' => 'reception123',
-                    'reception2@platform.com' => 'reception123',
-                    'lab1@platform.com' => 'lab123',
-                    'lab2@platform.com' => 'lab123',
-                    'patient1@platform.com' => 'patient123',
-                    'patient2@platform.com' => 'patient123',
-                    'patient3@platform.com' => 'patient123',
-                    'patient4@platform.com' => 'patient123',
-                    'patient5@platform.com' => 'patient123',
-                    'patient6@platform.com' => 'patient123',
-                    'patient7@platform.com' => 'patient123',
-                    'patient8@platform.com' => 'patient123',
-                    'patient9@platform.com' => 'patient123',
-                    'patient10@platform.com' => 'patient123',
-                    'patient11@platform.com' => 'patient123',
-                    'patient12@platform.com' => 'patient123',
-                ];
-                foreach ($seedPasswords as $email => $pass) {
-                    $hash = password_hash($pass, PASSWORD_DEFAULT);
-                    Database::query("UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?", [$hash, $email]);
-                }
-                Logger::info('[password-reset] Reset ' . count($seedPasswords) . ' seed passwords on cold start');
-            }
-        } catch (Throwable $e) {
-            Logger::error('[password-reset] Failed: ' . $e->getMessage());
-        }
-
         // Write the flag file
         @file_put_contents($migrationFlagFile, json_encode([
             'migrated_at' => date('Y-m-d H:i:s'),
@@ -160,6 +112,82 @@ if (!file_exists($migrationFlagFile)) {
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     } catch (Throwable $e) {
         Logger::error('AutoMigrator threw: ' . $e->getMessage());
+    }
+}
+
+// ⚡ Ensure seed passwords are ALWAYS correct — runs on every request
+// but APCu-cached for 5 minutes to avoid DB queries.
+// Checks ALL 5 demo accounts (not just admin). If ANY fails, resets ALL.
+$pwCheckKey = 'seed_pw_check_ok';
+$pwCheckOk = false;
+if (function_exists('apcu_fetch')) {
+    $pwCheckOk = apcu_fetch($pwCheckKey);
+}
+if ($pwCheckOk !== true) {
+    try {
+        $seedPasswords = [
+            'admin@platform.com' => 'admin123',
+            'doctor1@platform.com' => 'doctor123',
+            'reception1@platform.com' => 'reception123',
+            'lab1@platform.com' => 'lab123',
+            'patient1@platform.com' => 'patient123',
+        ];
+        $allFullPasswords = [
+            'admin@platform.com' => 'admin123',
+            'doctor1@platform.com' => 'doctor123',
+            'doctor2@platform.com' => 'doctor123',
+            'doctor3@platform.com' => 'doctor123',
+            'doctor4@platform.com' => 'doctor123',
+            'doctor5@platform.com' => 'doctor123',
+            'doctor6@platform.com' => 'doctor123',
+            'doctor7@platform.com' => 'doctor123',
+            'doctor8@platform.com' => 'doctor123',
+            'doctor9@platform.com' => 'doctor123',
+            'doctor10@platform.com' => 'doctor123',
+            'reception1@platform.com' => 'reception123',
+            'reception2@platform.com' => 'reception123',
+            'lab1@platform.com' => 'lab123',
+            'lab2@platform.com' => 'lab123',
+            'patient1@platform.com' => 'patient123',
+            'patient2@platform.com' => 'patient123',
+            'patient3@platform.com' => 'patient123',
+            'patient4@platform.com' => 'patient123',
+            'patient5@platform.com' => 'patient123',
+            'patient6@platform.com' => 'patient123',
+            'patient7@platform.com' => 'patient123',
+            'patient8@platform.com' => 'patient123',
+            'patient9@platform.com' => 'patient123',
+            'patient10@platform.com' => 'patient123',
+            'patient11@platform.com' => 'patient123',
+            'patient12@platform.com' => 'patient123',
+        ];
+
+        $needReset = false;
+        foreach ($seedPasswords as $email => $pass) {
+            $user = Database::fetch("SELECT password_hash, is_active FROM users WHERE email = ? LIMIT 1", [$email]);
+            if (!$user || !password_verify($pass, $user['password_hash']) || !$user['is_active']) {
+                $needReset = true;
+                break;
+            }
+        }
+
+        if ($needReset) {
+            foreach ($allFullPasswords as $email => $pass) {
+                $hash = password_hash($pass, PASSWORD_DEFAULT);
+                Database::query("UPDATE users SET password_hash = ?, is_active = 1 WHERE email = ?", [$hash, $email]);
+            }
+            // Clear APCu user cache so fresh data is fetched
+            if (function_exists('apcu_clear_cache')) {
+                apcu_clear_cache();
+            }
+            Logger::info('[password-check] Reset ' . count($allFullPasswords) . ' seed passwords');
+        }
+
+        if (function_exists('apcu_store')) {
+            apcu_store($pwCheckKey, true, 300); // cache for 5 minutes
+        }
+    } catch (Throwable $e) {
+        // DB might not be ready yet — silently ignore, will retry next request
     }
 }
 
