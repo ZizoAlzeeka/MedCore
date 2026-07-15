@@ -515,6 +515,15 @@ body {
 .ql-editor { font-family: 'Cairo', sans-serif !important; font-size: 14px; min-height: 180px; }
 .ql-toolbar.ql-snow { border-radius: 8px 8px 0 0; }
 .ql-container.ql-snow { border-radius: 0 0 8px 8px; }
+
+/* ⚡ Fix: Quill list bullets render in wrong position in RTL.
+   Quill uses li::before pseudo-elements for custom bullets which
+   break in RTL layout. Switch to native CSS list-style instead. */
+.ql-editor li::before { display: none !important; }
+.ql-editor li { list-style-type: none !important; }
+.ql-editor ul > li { list-style-type: disc !important; }
+.ql-editor ol > li { list-style-type: decimal !important; }
+.ql-editor ul, .ql-editor ol { padding-right: 1.5em; padding-left: 0 !important; }
 .treatment-display {
     background: #fff;
     border: 1px solid #eee;
@@ -524,7 +533,10 @@ body {
     font-size: 13.5px;
 }
 .treatment-display h1, .treatment-display h2, .treatment-display h3 { font-size: 16px; margin: 8px 0; }
-.treatment-display ul, .treatment-display ol { padding-right: 20px; }
+.treatment-display ul, .treatment-display ol { padding-right: 1.5em; padding-left: 0; }
+.treatment-display li::before { display: none !important; }
+.treatment-display ul > li { list-style-type: disc !important; }
+.treatment-display ol > li { list-style-type: decimal !important; }
 .treatment-display strong { color: var(--primary-purple); }
 
 /* Password input with eye */
