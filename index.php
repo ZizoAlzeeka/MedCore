@@ -86,7 +86,7 @@ if (Env::get('APP_DEBUG', 'false') === 'true') {
 //
 // ⚡ Force re-migration after financial fields removal — bump flag file name
 // ⚡ Bump to v4: forces re-run of migrations (incl. 2026_07_15_add_unit_range_to_tests_catalog.sql)
-$migrationFlagFile = __DIR__ . '/database/.migrated_v4';
+$migrationFlagFile = __DIR__ . '/database/.migrated_v5';
 if (!file_exists($migrationFlagFile)) {
     try {
         $migrationMessages = AutoMigrator::runIfNeeded();
