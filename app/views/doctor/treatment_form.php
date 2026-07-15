@@ -1,10 +1,28 @@
 <?php /** Doctor: treatment plan form (Quill) */
 $extraScripts = '
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js" defer></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    initQuill("editor-container", "description_html");
+window.addEventListener("DOMContentLoaded", function() {
+    // Wait for Quill to load (it has defer)
+    setTimeout(function() {
+        if (typeof Quill !== "undefined") {
+            initQuill("editor-container", "description_html");
+        } else {
+            // Retry after 200ms if Quill not yet loaded
+            setTimeout(function() {
+                if (typeof Quill !== "undefined") {
+                    initQuill("editor-container", "description_html");
+                }
+            }, 200);
+        }
+    }, 50);
+});
+// Also re-init on SPA navigation
+document.addEventListener("spa:navigated", function() {
+    if (document.getElementById("editor-container") && typeof Quill !== "undefined") {
+        initQuill("editor-container", "description_html");
+    }
 });
 </script>
 ';
