@@ -1,18 +1,44 @@
 <?php /** Doctor: treatment plan form (Quill) */
 $extraScripts = '
 <script>
-// Quill CSS+JS are loaded in the layout (head + deferred scripts).
-// Just init the editor when DOM is ready.
 function initTreatmentEditor() {
     if (typeof Quill !== "undefined" && document.getElementById("editor-container")) {
-        // Check if already initialized
         if (!document.querySelector(".ql-toolbar")) {
-            initQuill("editor-container", "description_html");
+            // ⚡ Quill default: LTR toolbar, LTR editor (original English design)
+            // Doctor uses the "direction" button (RTL/LTR icon) in toolbar to
+            // switch any paragraph to RTL when writing Arabic.
+            var quill = new Quill("#editor-container", {
+                theme: "snow",
+                modules: {
+                    toolbar: [
+                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
+                        ["bold", "italic", "underline", "strike"],
+                        [{ color: [] }, { background: [] }],
+                        [{ list: "ordered" }, { list: "bullet" }],
+                        [{ align: [] }],
+                        [{ direction: [] }],
+                        ["link", "blockquote"],
+                        ["clean"]
+                    ]
+                }
+            });
+
+            // Sync content to hidden input
+            var hidden = document.getElementById("description_html");
+            if (hidden) {
+                quill.on("text-change", function() {
+                    hidden.value = quill.root.innerHTML;
+                });
+                if (hidden.value) {
+                    quill.root.innerHTML = hidden.value;
+                }
+            }
         }
     } else {
         setTimeout(initTreatmentEditor, 100);
     }
 }
+
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initTreatmentEditor);
 } else {
@@ -53,7 +79,7 @@ document.addEventListener("spa:navigated", initTreatmentEditor);
             </div>
             <div class="mb-3">
                 <label class="form-label">الوصف وطريقة الاستخدام <span class="text-danger">*</span></label>
-                <div id="editor-container"></div>
+                <div id="editor-container" style="min-height:200px;"></div>
                 <input type="hidden" name="description_html" id="description_html">
             </div>
             <div class="d-flex gap-2">

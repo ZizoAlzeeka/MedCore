@@ -421,7 +421,8 @@ function printToPDF(elementId, filename) {
     html2pdf().set(opt).from(element).save();
 }
 
-// Init Quill editor
+// Init Quill editor — kept for backwards compatibility but treatment_form
+// now has its own inline init. This function is no longer the primary entry.
 function initQuill(containerId = 'editor-container', hiddenInputId = 'description_html') {
     if (typeof Quill === 'undefined') {
         console.error('Quill not loaded');
@@ -434,25 +435,15 @@ function initQuill(containerId = 'editor-container', hiddenInputId = 'descriptio
         theme: 'snow',
         modules: {
             toolbar: [
-                [{ 'header': [1, 2, 3, false] }],
+                [{ header: [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline'],
-                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                [{ 'align': [] }],
-                [{ 'direction': [] }],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                [{ align: [] }, { direction: [] }],
                 ['blockquote'],
                 ['clean']
             ]
         }
     });
-
-    // ⚡ Set RTL on the EDITOR AREA ONLY (after Quill creates .ql-editor).
-    // NOT on the container — toolbar must stay LTR (original Quill design).
-    // This makes bullets/numbers render on the RIGHT side for Arabic text.
-    var editor = container.querySelector('.ql-editor');
-    if (editor) {
-        editor.setAttribute('dir', 'rtl');
-        editor.style.textAlign = 'right';
-    }
 
     var hidden = document.getElementById(hiddenInputId);
     if (hidden) {

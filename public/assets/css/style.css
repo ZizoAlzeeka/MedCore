@@ -510,8 +510,7 @@ body {
 .timeline-item.alert::before { border-color: var(--primary-pink); }
 .timeline-item.success::before { border-color: #43E97B; }
 
-/* Quill editor — ONLY font, nothing else. Let Quill handle its own lists. */
-.ql-editor { font-family: 'Cairo', sans-serif !important; font-size: 14px; }
+/* Quill editor — zero overrides, 100% original Quill snow theme */
 .treatment-display {
     background: #fff;
     border: 1px solid #eee;
