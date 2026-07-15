@@ -4,26 +4,48 @@ $extraScripts = '
 function initTreatmentEditor() {
     if (typeof Quill !== "undefined" && document.getElementById("editor-container")) {
         if (!document.querySelector(".ql-toolbar")) {
-            // ⚡ Quill default: LTR toolbar, LTR editor (original English design)
-            // Doctor uses the "direction" button (RTL/LTR icon) in toolbar to
-            // switch any paragraph to RTL when writing Arabic.
             var quill = new Quill("#editor-container", {
                 theme: "snow",
                 modules: {
-                    toolbar: [
-                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
-                        ["bold", "italic", "underline", "strike"],
-                        [{ color: [] }, { background: [] }],
-                        [{ list: "ordered" }, { list: "bullet" }],
-                        [{ align: [] }],
-                        [{ direction: ['rtl', 'ltr'] }],
-                        ["link", "blockquote"],
-                        ["clean"]
-                    ]
+                    toolbar: {
+                        container: [
+                            [{ header: [1, 2, 3, false] }],
+                            ["bold", "italic", "underline"],
+                            [{ color: [] }, { background: [] }],
+                            [{ list: "ordered" }, { list: "bullet" }],
+                            [{ align: [] }],
+                            ["rtl", "ltr"],
+                            ["link", "blockquote"],
+                            ["clean"]
+                        ],
+                        handlers: {
+                            rtl: function() {
+                                var q = this.quill;
+                                var range = q.getSelection();
+                                if (range) {
+                                    q.format("direction", "rtl");
+                                    q.format("align", "right");
+                                }
+                            },
+                            ltr: function() {
+                                var q = this.quill;
+                                var range = q.getSelection();
+                                if (range) {
+                                    q.format("direction", "ltr");
+                                    q.format("align", "left");
+                                }
+                            }
+                        }
+                    }
                 }
             });
 
-            // Sync content to hidden input
+            // Label the custom RTL/LTR buttons
+            var rtlBtn = document.querySelector(".ql-toolbar button.ql-rtl");
+            var ltrBtn = document.querySelector(".ql-toolbar button.ql-ltr");
+            if (rtlBtn) { rtlBtn.innerHTML = "RTL"; rtlBtn.title = "تحويل النص لليمين"; rtlBtn.style.fontWeight = "700"; rtlBtn.style.fontSize = "11px"; }
+            if (ltrBtn) { ltrBtn.innerHTML = "LTR"; ltrBtn.title = "تحويل النص لليسار"; ltrBtn.style.fontWeight = "700"; ltrBtn.style.fontSize = "11px"; }
+
             var hidden = document.getElementById("description_html");
             if (hidden) {
                 quill.on("text-change", function() {
