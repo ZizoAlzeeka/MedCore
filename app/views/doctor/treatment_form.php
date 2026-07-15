@@ -1,29 +1,40 @@
 <?php /** Doctor: treatment plan form (Quill) */
 $extraScripts = '
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js" defer></script>
 <script>
-window.addEventListener("DOMContentLoaded", function() {
-    // Wait for Quill to load (it has defer)
-    setTimeout(function() {
+// ⚡ Load Quill CSS + JS dynamically (works in both full page load AND SPA navigation)
+(function() {
+    function loadCSS(href) {
+        if (document.querySelector(\'link[href*="quill.snow"]\')) return;
+        var link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        document.head.appendChild(link);
+    }
+    function loadJS(src, callback) {
+        if (document.querySelector(\'script[src*="quill.js"]\')) {
+            if (callback) callback();
+            return;
+        }
+        var script = document.createElement("script");
+        script.src = src;
+        script.onload = function() { if (callback) callback(); };
+        document.head.appendChild(script);
+    }
+
+    loadCSS("https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css");
+
+    function tryInit() {
         if (typeof Quill !== "undefined") {
             initQuill("editor-container", "description_html");
         } else {
-            // Retry after 200ms if Quill not yet loaded
-            setTimeout(function() {
-                if (typeof Quill !== "undefined") {
-                    initQuill("editor-container", "description_html");
-                }
-            }, 200);
+            setTimeout(tryInit, 100);
         }
-    }, 50);
-});
-// Also re-init on SPA navigation
-document.addEventListener("spa:navigated", function() {
-    if (document.getElementById("editor-container") && typeof Quill !== "undefined") {
-        initQuill("editor-container", "description_html");
     }
-});
+
+    loadJS("https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js", function() {
+        setTimeout(tryInit, 50);
+    });
+})();
 </script>
 ';
 ?>
