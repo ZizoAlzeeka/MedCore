@@ -510,7 +510,16 @@ body {
 .timeline-item.alert::before { border-color: var(--primary-pink); }
 .timeline-item.success::before { border-color: #43E97B; }
 
-/* Quill editor — zero overrides, 100% original Quill snow theme */
+/* Quill editor — undo Bootstrap RTL cascade that breaks list rendering.
+   Bootstrap RTL sets direction:rtl on body which cascades into .ql-editor.
+   Quill's snow theme uses li::before with absolute positioning for bullets.
+   In RTL, these positions are calculated wrong → bullets appear in wrong place.
+   Fix: force .ql-editor back to LTR (Quill's intended default).
+   The doctor uses the direction toolbar button for Arabic text per-paragraph. */
+.ql-editor { direction: ltr; text-align: left; }
+.ql-snow .ql-editor h1, .ql-snow .ql-editor h2, .ql-snow .ql-editor h3 { direction: ltr; }
+
+/* treatment-display (viewing saved plans) */
 .treatment-display {
     background: #fff;
     border: 1px solid #eee;
