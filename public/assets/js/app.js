@@ -430,9 +430,6 @@ function initQuill(containerId = 'editor-container', hiddenInputId = 'descriptio
     var container = document.getElementById(containerId);
     if (!container) return null;
 
-    // ⚡ Set LTR on the editor container so Quill renders exactly like its original design
-    container.setAttribute('dir', 'ltr');
-
     var quill = new Quill('#' + containerId, {
         theme: 'snow',
         modules: {
@@ -447,6 +444,16 @@ function initQuill(containerId = 'editor-container', hiddenInputId = 'descriptio
             ]
         }
     });
+
+    // ⚡ Set the editor to RTL by default (Arabic content)
+    // The toolbar stays LTR (Quill default) so buttons look correct.
+    // The direction button in toolbar lets doctor toggle LTR/RTL per paragraph.
+    var editor = container.querySelector('.ql-editor');
+    if (editor) {
+        editor.setAttribute('dir', 'rtl');
+        editor.style.textAlign = 'right';
+    }
+
     var hidden = document.getElementById(hiddenInputId);
     if (hidden) {
         quill.on('text-change', function() {
