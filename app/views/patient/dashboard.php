@@ -67,15 +67,21 @@
     <!-- Latest treatment -->
     <div class="col-lg-5">
         <div class="card h-100">
-            <div class="card-header"><i class="bi bi-prescription2 text-pink"></i> آخر خطة علاج</div>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-prescription2 text-pink"></i> خطة العلاج</span>
+                <a href="<?= url('/patient/treatment') ?>" class="btn btn-sm btn-link p-0">عرض الكل</a>
+            </div>
             <div class="card-body">
                 <?php if ($latestTreatment): ?>
-                    <h6 class="text-purple fw-bold"><?= e($latestTreatment['treatment_name']) ?></h6>
+                    <h6 class="text-purple fw-bold"><i class="bi bi-capsule"></i> <?= e($latestTreatment['treatment_name']) ?></h6>
                     <div class="small text-muted mb-2">بقلم <?= e($latestTreatment['doctor_name']) ?> — <?= formatDate($latestTreatment['created_at'], true) ?></div>
                     <div class="treatment-display"><?= $latestTreatment['description_html'] ?></div>
-                    <a href="<?= url('/patient/treatment') ?>" class="btn btn-sm btn-primary mt-2"><i class="bi bi-eye"></i> عرض الكل</a>
                 <?php else: ?>
-                    <div class="empty-state"><i class="bi bi-capsule"></i><h5>لا توجد خطة علاج</h5><p>ستظهر هنا بعد زيارتك للطبيب</p></div>
+                    <div class="text-center py-4">
+                        <i class="bi bi-prescription2" style="font-size:48px;color:#b2bec3;opacity:0.5;"></i>
+                        <h6 class="text-muted mt-2">لا توجد خطة علاج حالياً</h6>
+                        <p class="small text-muted">ستظهر هنا بعد زيارتك للطبيب ورفع نتائج التحاليل</p>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

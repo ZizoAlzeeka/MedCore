@@ -140,6 +140,142 @@ $router->add('GET',  '/admin/reports', 'AdminController@reports');
 $router->add('GET',  '/admin/settings', 'AdminController@settings');
 $router->add('POST', '/admin/settings', 'AdminController@updateSettings');
 
+// ===== Database backup download (admin-only) =====
+// Generates a full .sql dump using pure PHP/PDO (no mysqldump dependency).
+// Works for both MySQL and SQLite drivers.
+$router->add('GET', '/admin/backup-db', function () {
+    if (!Auth::check() || Auth::role() !== 'admin') {
+        http_response_code(403);
+        echo 'Admin only';
+        exit;
+    }
+
+    // Bump memory + time limits — backups can be large for big tables.
+    @ini_set('memory_limit', '512M');
+    @set_time_limit(300);
+
+    try {
+        $pdo = Database::getInstance()->pdo();
+        $isSqlite = Database::isSqlite();
+        $dbName = $isSqlite
+            ? basename(Env::get('DB_PATH', 'database/platform.sqlite'))
+            : Env::get('DB_NAME', 'medcore');
+
+        // Get list of tables
+        if ($isSqlite) {
+            $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+                          ->fetchAll(PDO::FETCH_COLUMN);
+        } else {
+            $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+        }
+
+        // Build the SQL dump in memory (typical MedCore DB is small — <5MB)
+        $out = [];
+        $out[] = "-- MedCore Database Backup";
+        $out[] = "-- Generated: " . date('Y-m-d H:i:s');
+        $out[] = "-- Driver: " . ($isSqlite ? 'SQLite' : 'MySQL');
+        $out[] = "-- Database: " . $dbName;
+        $out[] = "-- Tables: " . count($tables);
+        $out[] = "SET NAMES utf8mb4;";
+        $out[] = "SET FOREIGN_KEY_CHECKS = 0;";
+        $out[] = "SET AUTOCOMMIT = 0;";
+        $out[] = "START TRANSACTION;";
+        $out[] = "";
+
+        foreach ($tables as $table) {
+            $out[] = "-- --------------------------------------------------------";
+            $out[] = "-- Table: `$table`";
+            $out[] = "";
+
+            // CREATE TABLE statement
+            if ($isSqlite) {
+                $createSql = $pdo->query("SELECT sql FROM sqlite_master WHERE type='table' AND name = " . $pdo->quote($table))
+                                 ->fetchColumn();
+                $out[] = "DROP TABLE IF EXISTS `$table`;";
+                $out[] = $createSql . ";";
+                $out[] = "";
+            } else {
+                $row = $pdo->query("SHOW CREATE TABLE `" . $table . "`")->fetch(PDO::FETCH_ASSOC);
+                $createSql = $row['Create Table'] ?? null;
+                $out[] = "DROP TABLE IF EXISTS `$table`;";
+                $out[] = $createSql . ";";
+                $out[] = "";
+            }
+
+            // Row count
+            $count = (int) $pdo->query("SELECT COUNT(*) FROM `" . $table . "`")->fetchColumn();
+            $out[] = "-- Rows: $count";
+
+            if ($count === 0) {
+                $out[] = "";
+                continue;
+            }
+
+            // Stream rows — fetch one at a time to keep memory low for big tables
+            $stmt = $pdo->prepare("SELECT * FROM `" . $table . "`");
+            $stmt->execute();
+            $stmt->setFetchMode(PDO::FETCH_ASSOC);
+
+            // Get column names (for INSERT INTO `tbl` (`col1`,`col2`,...))
+            $colStmt = $pdo->prepare($isSqlite
+                ? "SELECT name FROM pragma_table_info(" . $pdo->quote($table) . ") ORDER BY cid"
+                : "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION");
+            if ($isSqlite) {
+                $colStmt->execute();
+            } else {
+                $colStmt->execute([$table]);
+            }
+            $columns = $colStmt->fetchAll(PDO::FETCH_COLUMN);
+            $colList = '`' . implode('`,`', $columns) . '`';
+
+            $batchSize = 100; // insert in batches of 100 rows
+            $batch = [];
+            while ($row = $stmt->fetch()) {
+                $values = [];
+                foreach ($columns as $col) {
+                    $val = $row[$col] ?? null;
+                    if ($val === null) {
+                        $values[] = 'NULL';
+                    } else {
+                        $values[] = $pdo->quote((string) $val);
+                    }
+                }
+                $batch[] = "(" . implode(',', $values) . ")";
+                if (count($batch) >= $batchSize) {
+                    $out[] = "INSERT INTO `$table` ($colList) VALUES " . implode(',', $batch) . ";";
+                    $batch = [];
+                }
+            }
+            if (!empty($batch)) {
+                $out[] = "INSERT INTO `$table` ($colList) VALUES " . implode(',', $batch) . ";";
+            }
+            $out[] = "";
+        }
+
+        $out[] = "COMMIT;";
+        $out[] = "SET FOREIGN_KEY_CHECKS = 1;";
+        $out[] = "";
+        $out[] = "-- End of backup";
+
+        $sql = implode("\n", $out);
+
+        // Stream as .sql download
+        $filename = 'medcore_backup_' . date('Y-m-d_His') . '.sql';
+        header('Content-Type: application/sql; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($sql));
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        header('Pragma: no-cache');
+        echo $sql;
+        exit;
+    } catch (Throwable $e) {
+        Logger::error('Backup failed: ' . $e->getMessage());
+        http_response_code(500);
+        echo 'Backup failed: ' . htmlspecialchars($e->getMessage());
+        exit;
+    }
+});
+
 // ===== Doctor routes =====
 $router->add('GET',  '/doctor', 'DoctorController@dashboard');
 $router->add('GET',  '/doctor/appointments', 'DoctorController@appointments');

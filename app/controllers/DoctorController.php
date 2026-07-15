@@ -283,6 +283,15 @@ class DoctorController extends Controller
 
         // Notify patient
         (new Notification())->send($order['patient_id'], 'treatment_added', 'خطة علاج جديدة', "تمت إضافة خطة علاج جديدة من قبل الطبيب: $name", $tpId);
+
+        // Invalidate APCu notification cache for the patient so the badge + toast
+        // appear immediately on the next poll (instead of waiting for cache expiry).
+        if (function_exists('apcu_delete')) {
+            apcu_delete('notif_data_' . $order['patient_id']);
+            apcu_delete('notif_count_' . $order['patient_id']);
+            apcu_delete('notif_unread_data_' . $order['patient_id']);
+        }
+
         Logger::audit('add_treatment', Auth::id(), ['tp_id' => $tpId, 'patient' => $order['patient_id']]);
         flash('success', 'تم حفظ خطة العلاج وإشعار المريض');
         redirect("/doctor/patients/" . $order['patient_id']);

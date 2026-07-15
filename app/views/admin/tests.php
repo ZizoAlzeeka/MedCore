@@ -110,6 +110,32 @@ $csrf = Auth::csrfToken();
                             <label class="form-label small">نوع العينة</label>
                             <input type="text" name="sample_type" id="test_sample" class="form-control form-control-sm" placeholder="دم / مصل / بلازما / بول">
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">الوحدة (Unit)</label>
+                            <select name="unit" id="test_unit" class="form-select form-select-sm">
+                                <option value="">— غير محدد —</option>
+                                <option value="g/dL">g/dL</option>
+                                <option value="mg/dL">mg/dL</option>
+                                <option value="mg/L">mg/L</option>
+                                <option value="x10^3/μL">x10^3/μL</option>
+                                <option value="x10^6/μL">x10^6/μL</option>
+                                <option value="%">%</option>
+                                <option value="mmol/L">mmol/L</option>
+                                <option value="U/L">U/L</option>
+                                <option value="ng/mL">ng/mL</option>
+                                <option value="pg/mL">pg/mL</option>
+                                <option value="fL">fL</option>
+                                <option value="μg/dL">μg/dL</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">النطاق الطبيعي (Min)</label>
+                            <input type="number" step="0.01" name="normal_range_min" id="test_range_min" class="form-control form-control-sm" placeholder="مثال: 11.0" dir="ltr">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">النطاق الطبيعي (Max)</label>
+                            <input type="number" step="0.01" name="normal_range_max" id="test_range_max" class="form-control form-control-sm" placeholder="مثال: 16.0" dir="ltr">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -215,6 +241,12 @@ function resetTestForm() {
     document.getElementById('test_name_en').value = '';
     document.getElementById('test_cat').value = '';
     document.getElementById('test_sample').value = '';
+    var unitSel = document.getElementById('test_unit');
+    if (unitSel) unitSel.value = '';
+    var rmin = document.getElementById('test_range_min');
+    if (rmin) rmin.value = '';
+    var rmax = document.getElementById('test_range_max');
+    if (rmax) rmax.value = '';
     document.getElementById('testModalTitle').textContent = 'إضافة تحليل';
     document.getElementById('loincSearchInput').value = '';
     document.getElementById('loincResults').innerHTML = '';
@@ -227,6 +259,12 @@ function editTest(t) {
     document.getElementById('test_name_en').value = t.name_en || '';
     document.getElementById('test_cat').value = t.category || '';
     document.getElementById('test_sample').value = t.sample_type || '';
+    var unitSel = document.getElementById('test_unit');
+    if (unitSel) unitSel.value = t.unit || '';
+    var rmin = document.getElementById('test_range_min');
+    if (rmin) rmin.value = (t.normal_range_min !== null && t.normal_range_min !== undefined) ? t.normal_range_min : '';
+    var rmax = document.getElementById('test_range_max');
+    if (rmax) rmax.value = (t.normal_range_max !== null && t.normal_range_max !== undefined) ? t.normal_range_max : '';
     document.getElementById('testModalTitle').textContent = 'تعديل تحليل';
     document.getElementById('loincResults').innerHTML = '';
     new bootstrap.Modal(document.getElementById('testModal')).show();

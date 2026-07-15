@@ -41,7 +41,21 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
-        $count = (new Notification())->unreadCount(Auth::id());
-        $this->json(['success' => true, 'count' => $count]);
+        $userId = Auth::id();
+        $notifModel = new Notification();
+        $count = $notifModel->unreadCount($userId);
+        // Fetch the most recent unread notification so the client can show a
+        // SweetAlert2 toast when a brand-new notif arrives (compared by id).
+        $latest = Database::fetch(
+            "SELECT id, type, title, message FROM notifications
+             WHERE user_id = ? AND is_read = 0
+             ORDER BY created_at DESC, id DESC LIMIT 1",
+            [$userId]
+        );
+        $this->json([
+            'success' => true,
+            'count'   => $count,
+            'latest'  => $latest ?: null,
+        ]);
     }
 }

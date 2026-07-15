@@ -317,7 +317,13 @@ class AdminController extends Controller
             'name_en' => $data['name_en'] ?? null,
             'category' => $data['category'] ?? null,
             'sample_type' => $data['sample_type'] ?? null,
+            'unit' => $this->normalizeUnit($data['unit'] ?? ''),
+            'normal_range_min' => $this->normalizeDecimal($data['normal_range_min'] ?? ''),
+            'normal_range_max' => $this->normalizeDecimal($data['normal_range_max'] ?? ''),
         ]);
+        if (function_exists('apcu_delete')) {
+            apcu_delete('admin_tests_catalog');
+        }
         flash('success', 'تمت إضافة التحليل');
         redirect('/admin/tests');
     }
@@ -332,9 +338,41 @@ class AdminController extends Controller
             'name_en' => $data['name_en'] ?? null,
             'category' => $data['category'] ?? null,
             'sample_type' => $data['sample_type'] ?? null,
+            'unit' => $this->normalizeUnit($data['unit'] ?? ''),
+            'normal_range_min' => $this->normalizeDecimal($data['normal_range_min'] ?? ''),
+            'normal_range_max' => $this->normalizeDecimal($data['normal_range_max'] ?? ''),
         ], "id = ?", [$id]);
+        if (function_exists('apcu_delete')) {
+            apcu_delete('admin_tests_catalog');
+        }
         flash('success', 'تم تحديث التحليل');
         redirect('/admin/tests');
+    }
+
+    /**
+     * Normalize unit value — allow only a known whitelist (defensive)
+     * but fall back to whatever the admin typed if it's not in the list
+     * (so custom units are still allowed).
+     */
+    private function normalizeUnit($value)
+    {
+        $value = trim((string) $value);
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * Normalize decimal input — accept either Arabic or English digits,
+     * return null when empty/invalid.
+     */
+    private function normalizeDecimal($value)
+    {
+        $value = trim((string) $value);
+        if ($value === '') return null;
+        // Convert Arabic digits to English
+        $value = strtr($value, ['٠'=>'0','١'=>'1','٢'=>'2','٣'=>'3','٤'=>'4','٥'=>'5','٦'=>'6','٧'=>'7','٨'=>'8','٩'=>'9']);
+        // Allow comma as decimal separator
+        $value = str_replace(',', '.', $value);
+        return is_numeric($value) ? (float) $value : null;
     }
 
     public function deleteTest($id)

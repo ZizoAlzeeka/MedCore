@@ -481,25 +481,74 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Live update notification count every 60s
-    if (document.querySelector('.topbar-icon-btn .badge-count')) {
-        setInterval(() => {
+    // Live update notification count + show SweetAlert2 toast on new notif (every 15s)
+    (function() {
+        var bellBtn = document.getElementById('notifBellBtn');
+        if (!bellBtn) return;
+
+        // Track the last seen notification id (so we only toast NEW ones, not backlog)
+        var lastSeenId = parseInt(bellBtn.dataset.lastNotifId || '0', 10) || 0;
+
+        function updateBadge(count) {
+            var badge = bellBtn.querySelector('.badge-count');
+            if (!badge) {
+                if (count > 0) {
+                    badge = document.createElement('span');
+                    badge.className = 'badge-count';
+                    badge.style.display = 'flex';
+                    bellBtn.appendChild(badge);
+                }
+                return;
+            }
+            if (count > 0) {
+                badge.textContent = count > 9 ? '9+' : count;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function showToast(latest) {
+            if (typeof Swal === 'undefined' || !latest) return;
+            var icon = 'info';
+            if (latest.type === 'result_ready') icon = 'success';
+            else if (latest.type === 'treatment_added') icon = 'success';
+            else if (latest.type === 'duplicate_alert') icon = 'warning';
+            else if (latest.type === 'referral') icon = 'info';
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: icon,
+                title: latest.title || 'إشعار جديد',
+                text: latest.message || '',
+                showConfirmButton: false,
+                timer: 5000,
+                timerProgressBar: true,
+                didOpen: function(toast) {
+                    toast.addEventListener('mouseenter', Swal.stopTimer);
+                    toast.addEventListener('mouseleave', Swal.resumeTimer);
+                }
+            });
+        }
+
+        setInterval(function() {
             fetch('/notifications/unread-count', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(r => r.json())
-                .then(data => {
-                    const badge = document.querySelector('.topbar-icon-btn .badge-count');
-                    if (badge) {
-                        if (data.count > 0) {
-                            badge.textContent = data.count;
-                            badge.style.display = 'flex';
-                        } else {
-                            badge.style.display = 'none';
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (!data || !data.success) return;
+                    updateBadge(data.count || 0);
+                    // Show toast if a brand new notification arrived
+                    if (data.latest && data.latest.id) {
+                        var newId = parseInt(data.latest.id, 10) || 0;
+                        if (newId > lastSeenId) {
+                            lastSeenId = newId;
+                            showToast(data.latest);
                         }
                     }
                 })
-                .catch(() => {});
-        }, 60000);
-    }
+                .catch(function() {});
+        }, 15000);
+    })();
 });
 
 // Handle browser back/forward

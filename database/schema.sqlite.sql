@@ -76,6 +76,9 @@ CREATE TABLE IF NOT EXISTS `tests_catalog` (
   `name_en` TEXT,
   `category` TEXT,
   `sample_type` TEXT,
+  `unit` TEXT,
+  `normal_range_min` REAL,
+  `normal_range_max` REAL,
   `created_at` TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS `idx_tests_category` ON `tests_catalog`(`category`);

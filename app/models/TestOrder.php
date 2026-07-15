@@ -85,6 +85,7 @@ class TestOrder extends Model
     {
         return Database::fetch(
             "SELECT o.*, t.name_ar, t.name_en, t.loinc_code, t.sample_type, t.category,
+                    t.unit AS catalog_unit, t.normal_range_min AS catalog_range_min, t.normal_range_max AS catalog_range_max,
                     r.result_value, r.unit, r.normal_range, r.flag, r.performed_at, r.uploaded_at,
                     r.lab_tech_id,
                     u.full_name AS patient_name, u.unique_id AS patient_uid, u.gender, u.birth_date, u.phone,

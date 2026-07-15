@@ -223,7 +223,9 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
             <div class="topbar-right">
                 <!-- Notifications -->
                 <div class="dropdown">
-                    <button class="topbar-icon-btn" data-bs-toggle="dropdown">
+                    <button class="topbar-icon-btn" id="notifBellBtn" data-bs-toggle="dropdown"
+                            data-last-notif-id="<?= !empty($recentNotifs) ? (int) $recentNotifs[0]['id'] : 0 ?>"
+                            data-initial-count="<?= (int) $notifCount ?>">
                         <i class="bi bi-bell"></i>
                         <?php if ($notifCount > 0): ?>
                             <span class="badge-count"><?= $notifCount > 9 ? '9+' : $notifCount ?></span>
