@@ -427,23 +427,29 @@ function initQuill(containerId = 'editor-container', hiddenInputId = 'descriptio
         console.error('Quill not loaded');
         return null;
     }
-    const quill = new Quill('#' + containerId, {
+    var container = document.getElementById(containerId);
+    if (!container) return null;
+
+    // ⚡ Set LTR on the editor container so Quill renders exactly like its original design
+    container.setAttribute('dir', 'ltr');
+
+    var quill = new Quill('#' + containerId, {
         theme: 'snow',
-        rtl: true,
         modules: {
             toolbar: [
                 [{ 'header': [1, 2, 3, false] }],
                 ['bold', 'italic', 'underline'],
                 [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                 [{ 'align': [] }],
+                [{ 'direction': [] }],
                 ['blockquote'],
                 ['clean']
             ]
         }
     });
-    const hidden = document.getElementById(hiddenInputId);
+    var hidden = document.getElementById(hiddenInputId);
     if (hidden) {
-        quill.on('text-change', () => {
+        quill.on('text-change', function() {
             hidden.value = quill.root.innerHTML;
         });
         if (hidden.value) {
