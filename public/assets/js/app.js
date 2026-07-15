@@ -445,6 +445,15 @@ function initQuill(containerId = 'editor-container', hiddenInputId = 'descriptio
         }
     });
 
+    // ⚡ Set RTL on the EDITOR AREA ONLY (after Quill creates .ql-editor).
+    // NOT on the container — toolbar must stay LTR (original Quill design).
+    // This makes bullets/numbers render on the RIGHT side for Arabic text.
+    var editor = container.querySelector('.ql-editor');
+    if (editor) {
+        editor.setAttribute('dir', 'rtl');
+        editor.style.textAlign = 'right';
+    }
+
     var hidden = document.getElementById(hiddenInputId);
     if (hidden) {
         quill.on('text-change', function() {
