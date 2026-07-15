@@ -510,139 +510,11 @@ body {
 .timeline-item.alert::before { border-color: var(--primary-pink); }
 .timeline-item.success::before { border-color: #43E97B; }
 
-/* Quill editor */
-/* ===== Quill Editor — RTL fixes ===== */
+/* Quill editor — minimal, only font + height */
 #editor-container { min-height: 220px; }
-
-/* Toolbar: fix button layout for RTL */
-.ql-toolbar.ql-snow {
-    border-radius: 10px 10px 0 0;
-    border: 1px solid #dfe6e9;
-    background: #f8f9fa;
-    padding: 8px 12px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-}
-/* Each toolbar group */
-.ql-toolbar.ql-snow .ql-formats {
-    margin: 0 2px;
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-}
-/* Toolbar buttons */
-.ql-snow .ql-toolbar button {
-    width: 30px;
-    height: 30px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 3px;
-}
-.ql-snow .ql-toolbar button:hover {
-    background: #e0f2fe;
-    border-radius: 6px;
-}
-.ql-snow .ql-toolbar button.ql-active {
-    background: #0d9488;
-    color: #fff;
-    border-radius: 6px;
-}
-/* Pickers (header, align, list) */
-.ql-snow .ql-picker {
-    display: inline-flex;
-    align-items: center;
-    height: 30px;
-    border-radius: 6px;
-    padding: 0 4px;
-}
-.ql-snow .ql-picker:hover {
-    background: #e0f2fe;
-    border-radius: 6px;
-}
-.ql-snow .ql-picker-label {
-    display: inline-flex;
-    align-items: center;
-    padding: 0 6px;
-}
-.ql-snow .ql-picker-options {
-    border-radius: 8px;
-    border: 1px solid #dfe6e9;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    padding: 4px;
-}
-/* Editor container */
-.ql-container.ql-snow {
-    border-radius: 0 0 10px 10px;
-    border: 1px solid #dfe6e9;
-    border-top: none;
-}
-/* Editor content area — RTL fixes */
-.ql-editor {
-    font-family: 'Cairo', sans-serif !important;
-    font-size: 14px;
-    min-height: 200px;
-    direction: rtl;
-    text-align: right;
-    padding: 16px;
-    line-height: 1.8;
-}
-/* Fix list bullets position in RTL */
-.ql-editor ul, .ql-editor ol {
-    padding-right: 24px;
-    padding-left: 0;
-    margin: 8px 0;
-}
-.ql-editor ul > li {
-    list-style-type: disc;
-    text-align: right;
-}
-.ql-editor ol > li {
-    list-style-type: decimal;
-    text-align: right;
-}
-/* Fix list bullet position — override Quill default */
-.ql-editor li::before {
-    display: none !important; /* Remove Quill's custom bullets that appear in wrong position */
-}
-/* Ensure proper list rendering */
-.ql-editor li {
-    margin-bottom: 4px;
-    padding-right: 4px;
-}
-/* Blockquote */
-.ql-editor blockquote {
-    border-right: 4px solid #0d9488;
-    border-left: none;
-    margin: 8px 0;
-    padding: 8px 16px;
-    background: #f0fdfa;
-    border-radius: 8px;
-    color: #636E72;
-}
-/* Headers */
-.ql-editor h1 { font-size: 22px; font-weight: 800; margin: 12px 0 8px; }
-.ql-editor h2 { font-size: 18px; font-weight: 700; margin: 10px 0 6px; }
-.ql-editor h3 { font-size: 16px; font-weight: 700; margin: 8px 0 4px; }
-/* Links */
-.ql-editor a { color: #0d9488; text-decoration: underline; }
-/* Placeholder */
-.ql-editor.ql-blank::before {
-    color: #b2bec3;
-    font-style: normal;
-    font-size: 14px;
-    right: 16px;
-    left: auto;
-}
-/* Tooltip */
-.ql-tooltip {
-    direction: rtl;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-}
+.ql-editor { font-family: 'Cairo', sans-serif !important; font-size: 14px; min-height: 180px; }
+.ql-toolbar.ql-snow { border-radius: 8px 8px 0 0; }
+.ql-container.ql-snow { border-radius: 0 0 8px 8px; }
 .treatment-display {
     background: #fff;
     border: 1px solid #eee;
@@ -650,23 +522,10 @@ body {
     padding: 16px 20px;
     line-height: 1.9;
     font-size: 13.5px;
-    direction: rtl;
-    text-align: right;
 }
 .treatment-display h1, .treatment-display h2, .treatment-display h3 { font-size: 16px; margin: 8px 0; }
-.treatment-display ul, .treatment-display ol { padding-right: 20px; padding-left: 0; margin: 6px 0; }
-.treatment-display li { margin-bottom: 4px; }
-.treatment-display li::before { display: none !important; }
+.treatment-display ul, .treatment-display ol { padding-right: 20px; }
 .treatment-display strong { color: var(--primary-purple); }
-.treatment-display blockquote {
-    border-right: 3px solid #0d9488;
-    border-left: none;
-    padding: 6px 12px;
-    margin: 6px 0;
-    background: #f0fdfa;
-    border-radius: 6px;
-    color: #636E72;
-}
 
 /* Password input with eye */
 .input-group .btn-eye {
