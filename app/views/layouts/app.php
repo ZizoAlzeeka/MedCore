@@ -160,6 +160,9 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 
 <!-- Local app styles -->
 <link href="<?= asset('css/style.css') ?>" rel="stylesheet">
+
+<!-- Quill Editor CSS (always loaded, only used on treatment form) -->
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 </head>
 <body>
 <!-- ⚡ Top loading progress bar -->
@@ -296,6 +299,7 @@ if ($basePath && strpos($currentUrl, $basePath) === 0) {
 <!-- ⚡ Defer all JS to avoid blocking first paint -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js" defer></script>
 <script src="<?= asset('js/calendar.js') ?>" defer></script>
 <script src="<?= asset('js/app.js') ?>" defer></script>
 <?php if (isset($extraScripts)) echo $extraScripts; ?>

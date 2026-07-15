@@ -1,40 +1,24 @@
 <?php /** Doctor: treatment plan form (Quill) */
 $extraScripts = '
 <script>
-// ⚡ Load Quill CSS + JS dynamically (works in both full page load AND SPA navigation)
-(function() {
-    function loadCSS(href) {
-        if (document.querySelector(\'link[href*="quill.snow"]\')) return;
-        var link = document.createElement("link");
-        link.rel = "stylesheet";
-        link.href = href;
-        document.head.appendChild(link);
-    }
-    function loadJS(src, callback) {
-        if (document.querySelector(\'script[src*="quill.js"]\')) {
-            if (callback) callback();
-            return;
-        }
-        var script = document.createElement("script");
-        script.src = src;
-        script.onload = function() { if (callback) callback(); };
-        document.head.appendChild(script);
-    }
-
-    loadCSS("https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css");
-
-    function tryInit() {
-        if (typeof Quill !== "undefined") {
+// Quill CSS+JS are loaded in the layout (head + deferred scripts).
+// Just init the editor when DOM is ready.
+function initTreatmentEditor() {
+    if (typeof Quill !== "undefined" && document.getElementById("editor-container")) {
+        // Check if already initialized
+        if (!document.querySelector(".ql-toolbar")) {
             initQuill("editor-container", "description_html");
-        } else {
-            setTimeout(tryInit, 100);
         }
+    } else {
+        setTimeout(initTreatmentEditor, 100);
     }
-
-    loadJS("https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js", function() {
-        setTimeout(tryInit, 50);
-    });
-})();
+}
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initTreatmentEditor);
+} else {
+    initTreatmentEditor();
+}
+document.addEventListener("spa:navigated", initTreatmentEditor);
 </script>
 ';
 ?>
