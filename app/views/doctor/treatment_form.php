@@ -16,7 +16,7 @@ function initTreatmentEditor() {
                         [{ color: [] }, { background: [] }],
                         [{ list: "ordered" }, { list: "bullet" }],
                         [{ align: [] }],
-                        [{ direction: [] }],
+                        [{ direction: ['rtl', 'ltr'] }],
                         ["link", "blockquote"],
                         ["clean"]
                     ]
